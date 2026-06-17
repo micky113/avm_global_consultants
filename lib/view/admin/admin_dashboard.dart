@@ -1,0 +1,1304 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:avm_global_web/services/firebase_service.dart';
+import 'package:avm_global_web/models/testimonial.dart';
+
+class AdminDashboardDialog extends StatefulWidget {
+  final Color themeColor;
+
+  const AdminDashboardDialog({super.key, required this.themeColor});
+
+  @override
+  State<AdminDashboardDialog> createState() => _AdminDashboardDialogState();
+}
+
+class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
+  bool _isAuthenticated = false;
+  final _passcodeController = TextEditingController();
+  String? _passcodeError;
+  String _activeTab = 'inquiries'; // 'inquiries' or 'testimonials'
+
+  @override
+  void dispose() {
+    _passcodeController.dispose();
+    super.dispose();
+  }
+
+  void _verifyPasscode() {
+    final code = _passcodeController.text.trim();
+    if (code == 'admin123') {
+      setState(() {
+        _isAuthenticated = true;
+        _passcodeError = null;
+      });
+    } else {
+      setState(() {
+        _passcodeError = 'Invalid Passcode. Please try again.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isLargeScreen = screenSize.width > 800;
+
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: isLargeScreen ? screenSize.width * 0.85 : screenSize.width * 0.95,
+          height: screenSize.height * 0.85,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: _isAuthenticated
+              ? _buildDashboardView(isLargeScreen)
+              : _buildLoginView(),
+        ),
+      ),
+    );
+  }
+
+  // Passcode Verification UI
+  Widget _buildLoginView() {
+    return Container(
+      padding: const EdgeInsets.all(32.0),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: widget.themeColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.admin_panel_settings_rounded,
+                    color: widget.themeColor,
+                    size: 56,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Admin Authentication',
+                  style: GoogleFonts.notoSans(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Enter passcode to access AVM Global administrative dashboard.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 14,
+                    color: Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                TextField(
+                  controller: _passcodeController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Admin Passcode',
+                    labelStyle: GoogleFonts.notoSans(color: Colors.black54),
+                    hintText: 'Enter passcode',
+                    errorText: _passcodeError,
+                    prefixIcon: Icon(Icons.lock_outline_rounded, color: widget.themeColor),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: widget.themeColor, width: 2),
+                    ),
+                  ),
+                  onSubmitted: (_) => _verifyPasscode(),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, color: Colors.black54),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _verifyPasscode,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: widget.themeColor,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'Unlock',
+                          style: GoogleFonts.notoSans(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Dashboard Main View
+  Widget _buildDashboardView(bool isLargeScreen) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
+    return Column(
+      children: [
+        // App Bar Header
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 16 : 24,
+            vertical: isMobile ? 12 : 18,
+          ),
+          decoration: BoxDecoration(
+            color: widget.themeColor,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.dashboard_customize_rounded,
+                      color: Colors.white,
+                      size: isMobile ? 24 : 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        isMobile ? 'Management Console' : 'AVM Global - Management Console',
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.notoSans(
+                          fontSize: isMobile ? 16 : 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Lock Dashboard',
+                    icon: Icon(Icons.lock_open_rounded, color: Colors.white, size: isMobile ? 20 : 24),
+                    onPressed: () {
+                      setState(() {
+                        _isAuthenticated = false;
+                        _passcodeController.clear();
+                      });
+                    },
+                  ),
+                  IconButton(
+                    tooltip: 'Close Management Console',
+                    icon: Icon(Icons.close_rounded, color: Colors.white, size: isMobile ? 20 : 24),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        
+        // Body Content
+        Expanded(
+          child: Row(
+            children: [
+              if (!isMobile)
+                // Sidebar Navigation
+                Container(
+                  width: isLargeScreen ? 240 : 70,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    border: Border(
+                      right: BorderSide(color: Colors.grey[200]!),
+                    ),
+                  ),
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    children: [
+                      _buildSidebarItem(
+                        id: 'inquiries',
+                        title: 'Candidate Inquiries',
+                        icon: Icons.contact_page_rounded,
+                        isLargeScreen: isLargeScreen,
+                      ),
+                      _buildSidebarItem(
+                        id: 'testimonials',
+                        title: 'Manage Testimonials',
+                        icon: Icons.reviews_rounded,
+                        isLargeScreen: isLargeScreen,
+                      ),
+                    ],
+                  ),
+                ),
+              
+              // Panel Display Area
+              Expanded(
+                child: Container(
+                  color: Colors.grey[100],
+                  child: _activeTab == 'inquiries'
+                      ? _buildInquiriesPanel()
+                      : _buildTestimonialsPanel(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (isMobile)
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                top: BorderSide(color: Colors.grey[200]!),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: BottomNavigationBar(
+              currentIndex: _activeTab == 'inquiries' ? 0 : 1,
+              onTap: (index) {
+                setState(() {
+                  _activeTab = index == 0 ? 'inquiries' : 'testimonials';
+                });
+              },
+              selectedItemColor: widget.themeColor,
+              unselectedItemColor: Colors.black38,
+              showSelectedLabels: true,
+              showUnselectedLabels: true,
+              selectedLabelStyle: GoogleFonts.notoSans(fontWeight: FontWeight.bold, fontSize: 12),
+              unselectedLabelStyle: GoogleFonts.notoSans(fontWeight: FontWeight.w500, fontSize: 12),
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.contact_page_rounded),
+                  label: 'Inquiries',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.reviews_rounded),
+                  label: 'Testimonials',
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSidebarItem({
+    required String id,
+    required String title,
+    required IconData icon,
+    required bool isLargeScreen,
+  }) {
+    final isSelected = _activeTab == id;
+    final itemColor = isSelected ? widget.themeColor : Colors.black54;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: InkWell(
+        onTap: () => setState(() => _activeTab = id),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          decoration: BoxDecoration(
+            color: isSelected ? widget.themeColor.withOpacity(0.08) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: isLargeScreen ? MainAxisAlignment.start : MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: itemColor, size: 22),
+              if (isLargeScreen) ...[
+                const SizedBox(width: 14),
+                Text(
+                  title,
+                  style: GoogleFonts.notoSans(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: itemColor,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Tab 1: Inquiries Management
+  Widget _buildInquiriesPanel() {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: FirebaseService.instance.getInquiriesStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error loading inquiries: ${snapshot.error}'));
+        }
+        final inquiries = snapshot.data ?? [];
+        if (inquiries.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.inbox_rounded, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'No inquiries available',
+                  style: GoogleFonts.notoSans(fontSize: 16, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final isMobilePanel = MediaQuery.of(context).size.width < 600;
+
+        return ListView.builder(
+          padding: EdgeInsets.all(isMobilePanel ? 12 : 24),
+          itemCount: inquiries.length,
+          itemBuilder: (context, index) {
+            final item = inquiries[index];
+            final name = item['name'] ?? 'Anonymous';
+            final jobField = item['jobField'] ?? 'Not Specified';
+            final resumeUrl = item['resumeUrl'] ?? '';
+            final resumeFileName = item['resumeFileName'] ?? '';
+            final docId = item['id'] ?? '';
+            
+            // Format Timestamp
+            String formattedDate = '';
+            if (item['submittedAt'] != null) {
+              try {
+                final date = item['submittedAt'] is DateTime
+                    ? item['submittedAt']
+                    : (item['submittedAt'] as dynamic).toDate();
+                formattedDate = '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+              } catch (_) {}
+            }
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Colors.grey[200]!),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(isMobilePanel ? 14 : 20),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isMobileCard = MediaQuery.of(context).size.width < 600;
+                    if (isMobileCard) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: widget.themeColor.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(Icons.person_pin_rounded, color: widget.themeColor, size: 28),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: GoogleFonts.notoSans(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    if (formattedDate.isNotEmpty)
+                                      Text(
+                                        formattedDate,
+                                        style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black38),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Line of Job Search: $jobField',
+                            style: GoogleFonts.notoSans(fontSize: 14, color: Colors.black54),
+                          ),
+                          if (resumeFileName.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(Icons.attach_file_rounded, size: 16, color: Colors.black45),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    resumeFileName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.notoSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: widget.themeColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.end,
+                            children: [
+                              if (resumeUrl.isNotEmpty)
+                                TextButton.icon(
+                                  icon: const Icon(Icons.copy_all_rounded, size: 18),
+                                  label: const Text('Copy Link'),
+                                  style: TextButton.styleFrom(foregroundColor: widget.themeColor),
+                                  onPressed: () {
+                                    Clipboard.setData(ClipboardData(text: resumeUrl));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Resume URL copied to clipboard!'),
+                                        behavior: SnackBarBehavior.floating,
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              TextButton.icon(
+                                icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                                label: const Text('Delete'),
+                                style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                                onPressed: () => _confirmDeleteInquiry(docId),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: widget.themeColor.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Icons.person_pin_rounded, color: widget.themeColor, size: 32),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    name,
+                                    style: GoogleFonts.notoSans(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  if (formattedDate.isNotEmpty) ...[
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      '•  $formattedDate',
+                                      style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black38),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Line of Job Search: $jobField',
+                                style: GoogleFonts.notoSans(fontSize: 14, color: Colors.black54),
+                              ),
+                              if (resumeFileName.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.attach_file_rounded, size: 16, color: Colors.black45),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      resumeFileName,
+                                      style: GoogleFonts.notoSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: widget.themeColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Row(
+                          children: [
+                            if (resumeUrl.isNotEmpty) ...[
+                              IconButton(
+                                icon: const Icon(Icons.copy_all_rounded),
+                                color: widget.themeColor,
+                                tooltip: 'Copy Resume Link',
+                                onPressed: () {
+                                  Clipboard.setData(ClipboardData(text: resumeUrl));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Resume URL copied to clipboard!'),
+                                      behavior: SnackBarBehavior.floating,
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded),
+                              color: Colors.redAccent,
+                              tooltip: 'Delete Inquiry',
+                              onPressed: () => _confirmDeleteInquiry(docId),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteInquiry(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Inquiry?'),
+        content: const Text('Are you sure you want to permanently delete this candidate inquiry?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await FirebaseService.instance.deleteInquiry(id);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Inquiry deleted successfully!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Tab 2: Testimonials Management
+  Widget _buildTestimonialsPanel() {
+    return StreamBuilder<List<Testimonial>>(
+      stream: FirebaseService.instance.getTestimonialsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error loading testimonials: ${snapshot.error}'));
+        }
+        final testimonials = snapshot.data ?? [];
+        if (testimonials.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.rate_review_rounded, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'No testimonials found',
+                  style: GoogleFonts.notoSans(fontSize: 16, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final isMobilePanel = MediaQuery.of(context).size.width < 600;
+
+        return ListView.builder(
+          padding: EdgeInsets.all(isMobilePanel ? 12 : 24),
+          itemCount: testimonials.length,
+          itemBuilder: (context, index) {
+            final item = testimonials[index];
+            final displayCategory = item.category == 'business' ? 'Business Review' : 'Job Seeker Review';
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Colors.grey[200]!),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(isMobilePanel ? 14 : 20),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isMobileCard = MediaQuery.of(context).size.width < 600;
+                    if (isMobileCard) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundColor: widget.themeColor.withOpacity(0.1),
+                                backgroundImage: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                                    ? NetworkImage(item.imageUrl!)
+                                    : null,
+                                child: item.imageUrl == null || item.imageUrl!.isEmpty
+                                    ? Text(
+                                        item.name.substring(0, 1).toUpperCase(),
+                                        style: GoogleFonts.notoSans(
+                                          fontWeight: FontWeight.bold,
+                                          color: widget.themeColor,
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.name,
+                                      style: GoogleFonts.notoSans(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    Text(
+                                      item.roleAndCountry,
+                                      style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black45),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: item.category == 'business'
+                                      ? Colors.orange.withOpacity(0.1)
+                                      : Colors.blue.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                child: Text(
+                                  displayCategory,
+                                  style: GoogleFonts.notoSans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: item.category == 'business'
+                                        ? Colors.orange[800]
+                                        : Colors.blue[800],
+                                  ),
+                                ),
+                              ),
+                              Row(
+                                children: List.generate(5, (starIdx) {
+                                  return Icon(
+                                    starIdx < item.rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                                    color: Colors.amber,
+                                    size: 16,
+                                  );
+                                }),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            item.reviewText,
+                            style: GoogleFonts.notoSans(
+                              fontSize: 14,
+                              color: Colors.black87,
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const Divider(),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.end,
+                            children: [
+                              TextButton.icon(
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                label: const Text('Edit'),
+                                style: TextButton.styleFrom(foregroundColor: widget.themeColor),
+                                onPressed: () => _editTestimonialDialog(item),
+                              ),
+                              TextButton.icon(
+                                icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                                label: const Text('Delete'),
+                                style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                                onPressed: () => _confirmDeleteTestimonial(item.id),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          radius: 28,
+                          backgroundColor: widget.themeColor.withOpacity(0.1),
+                          backgroundImage: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                              ? NetworkImage(item.imageUrl!)
+                              : null,
+                          child: item.imageUrl == null || item.imageUrl!.isEmpty
+                              ? Text(
+                                  item.name.substring(0, 1).toUpperCase(),
+                                  style: GoogleFonts.notoSans(
+                                    fontWeight: FontWeight.bold,
+                                    color: widget.themeColor,
+                                  ),
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    item.name,
+                                    style: GoogleFonts.notoSans(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: item.category == 'business'
+                                          ? Colors.orange.withOpacity(0.1)
+                                          : Colors.blue.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+                                    child: Text(
+                                      displayCategory,
+                                      style: GoogleFonts.notoSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: item.category == 'business'
+                                            ? Colors.orange[800]
+                                            : Colors.blue[800],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                item.roleAndCountry,
+                                style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black45),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: List.generate(5, (starIdx) {
+                                  return Icon(
+                                    starIdx < item.rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                                    color: Colors.amber,
+                                    size: 18,
+                                  );
+                                }),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                item.reviewText,
+                                style: GoogleFonts.notoSans(
+                                  fontSize: 14,
+                                  color: Colors.black87,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined),
+                              color: widget.themeColor,
+                              tooltip: 'Edit Testimonial',
+                              onPressed: () => _editTestimonialDialog(item),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded),
+                              color: Colors.redAccent,
+                              tooltip: 'Delete Testimonial',
+                              onPressed: () => _confirmDeleteTestimonial(item.id),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteTestimonial(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Testimonial?'),
+        content: const Text('Are you sure you want to permanently delete this testimonial?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await FirebaseService.instance.deleteTestimonial(id);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Testimonial deleted successfully!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+  // Edit Testimonial Sub-Dialog Form
+  void _editTestimonialDialog(Testimonial testimonial) {
+    final formKey = GlobalKey<FormState>();
+    final nameCtrl = TextEditingController(text: testimonial.name);
+    final roleCtrl = TextEditingController(text: testimonial.roleAndCountry);
+    final textCtrl = TextEditingController(text: testimonial.reviewText);
+    double ratingVal = testimonial.rating;
+    String categoryVal = testimonial.category;
+
+    Uint8List? editImageBytes;
+    String? editImageName;
+    String? currentImageUrl = testimonial.imageUrl;
+    bool removeCurrentImage = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> pickNewImage() async {
+              try {
+                final result = await FilePicker.platform.pickFiles(
+                  type: FileType.image,
+                  allowMultiple: false,
+                );
+                if (result != null && result.files.single.bytes != null) {
+                  setDialogState(() {
+                    editImageBytes = result.files.single.bytes;
+                    editImageName = result.files.single.name;
+                    removeCurrentImage = false;
+                  });
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error picking image: $e')),
+                );
+              }
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                'Edit Testimonial',
+                style: GoogleFonts.notoSans(fontWeight: FontWeight.bold),
+              ),
+              content: SizedBox(
+                width: MediaQuery.of(context).size.width < 520
+                    ? MediaQuery.of(context).size.width * 0.85
+                    : 480,
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Reviewer Category
+                        Text(
+                          'Category',
+                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<String>(
+                          value: categoryVal,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'job_seeker', child: Text('Job Seeker')),
+                            DropdownMenuItem(value: 'business', child: Text('Business')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              setDialogState(() => categoryVal = val);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Photo Selection Preview
+                        Text(
+                          'Reviewer Photo',
+                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 16,
+                          runSpacing: 12,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            CircleAvatar(
+                              radius: 36,
+                              backgroundColor: widget.themeColor.withOpacity(0.1),
+                              backgroundImage: editImageBytes != null
+                                  ? MemoryImage(editImageBytes!)
+                                  : (currentImageUrl != null && currentImageUrl.isNotEmpty && !removeCurrentImage
+                                      ? NetworkImage(currentImageUrl) as ImageProvider
+                                      : null),
+                              child: (editImageBytes == null && (currentImageUrl == null || currentImageUrl.isEmpty || removeCurrentImage))
+                                  ? Text(
+                                      (nameCtrl.text.isNotEmpty ? nameCtrl.text.substring(0, 1) : 'T').toUpperCase(),
+                                      style: GoogleFonts.notoSans(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: widget.themeColor,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: pickNewImage,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.grey[100],
+                                    foregroundColor: Colors.black87,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      side: BorderSide(color: Colors.grey[300]!),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.photo_library_rounded, size: 16),
+                                  label: Text(
+                                    editImageBytes != null || (currentImageUrl != null && currentImageUrl.isNotEmpty && !removeCurrentImage)
+                                        ? 'Change Photo'
+                                        : 'Upload Photo',
+                                    style: GoogleFonts.notoSans(fontSize: 12),
+                                  ),
+                                ),
+                                if (editImageBytes != null || (currentImageUrl != null && currentImageUrl.isNotEmpty && !removeCurrentImage)) ...[
+                                  const SizedBox(height: 6),
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      setDialogState(() {
+                                        editImageBytes = null;
+                                        editImageName = null;
+                                        removeCurrentImage = true;
+                                      });
+                                    },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.redAccent,
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: const Size(0, 0),
+                                    ),
+                                    icon: const Icon(Icons.delete_outline_rounded, size: 14),
+                                    label: Text(
+                                      'Remove Photo',
+                                      style: GoogleFonts.notoSans(fontSize: 11, fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Name field
+                        Text(
+                          'Reviewer Name',
+                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: nameCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'Reviewer name',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty ? 'Name required' : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Role/Country
+                        Text(
+                          categoryVal == 'business' ? 'Company Role & Country' : 'Job Role & Country',
+                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: roleCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'e.g. Software Engineer, Germany',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty ? 'Role & Country required' : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Star Rating
+                        Text(
+                          'Rating',
+                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        Row(
+                          children: List.generate(5, (starIdx) {
+                            return IconButton(
+                              icon: Icon(
+                                starIdx < ratingVal ? Icons.star_rounded : Icons.star_outline_rounded,
+                                color: Colors.amber,
+                                size: 28,
+                              ),
+                              onPressed: () {
+                                setDialogState(() => ratingVal = starIdx + 1.0);
+                              },
+                            );
+                          }),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Review Text
+                        Text(
+                          'Review Description',
+                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: textCtrl,
+                          maxLines: 4,
+                          decoration: InputDecoration(
+                            hintText: 'Type testimonial text here...',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty ? 'Review text required' : null,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (!formKey.currentState!.validate()) return;
+                    
+                    final updatedTestimonial = Testimonial(
+                      id: testimonial.id,
+                      name: nameCtrl.text.trim(),
+                      roleAndCountry: roleCtrl.text.trim(),
+                      reviewText: textCtrl.text.trim(),
+                      rating: ratingVal,
+                      timestamp: testimonial.timestamp,
+                      category: categoryVal,
+                      imageUrl: removeCurrentImage ? '' : testimonial.imageUrl,
+                    );
+                    
+                    try {
+                      await FirebaseService.instance.updateTestimonial(
+                        updatedTestimonial,
+                        imageBytes: editImageBytes,
+                        imageName: editImageName,
+                      );
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Testimonial updated successfully!'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error updating: $e'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.themeColor,
+                    elevation: 0,
+                  ),
+                  child: const Text('Save Changes', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}

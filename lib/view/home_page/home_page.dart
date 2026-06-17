@@ -1,7 +1,11 @@
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:avm_global_web/services/firebase_service.dart';
+import 'package:avm_global_web/view/admin/admin_dashboard.dart';
 import 'package:avm_global_web/view/home_page/widgets/animated_card/animated_card.dart';
 
 import 'package:avm_global_web/view/home_page/widgets/animated_underline_menu_item/animated_underline_menu_item.dart';
@@ -9,6 +13,7 @@ import 'package:avm_global_web/view/home_page/widgets/featured_card/featured_car
 import 'package:avm_global_web/view/home_page/widgets/hover_clickable%20button/hover_clickable_button.dart';
 import 'package:avm_global_web/view/home_page/widgets/hover_dropdown_button/hover_dropdown_button.dart';
 import 'package:avm_global_web/view/home_page/widgets/hover_text/hover_text.dart';
+import 'package:avm_global_web/widgets/testimonials_section.dart';
 
 class MyHomePage extends StatefulWidget {
   MyHomePage({super.key, required this.title, required this.dropdownItems});
@@ -30,6 +35,177 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isHovering = false;
   bool _isHovering1 = false;
   bool _isHovering2 = false;
+
+  final GlobalKey _testimonialsKey = GlobalKey();
+
+  void _scrollToSection(GlobalKey key) {
+    if (key.currentContext != null) {
+      Scrollable.ensureVisible(
+        key.currentContext!,
+        duration: const Duration(milliseconds: 800),
+        curve: Curves.easeInOutCubic,
+      );
+    }
+  }
+
+  Widget _buildDrawer(BuildContext context) {
+    final Color contact_button_color = const Color.fromARGB(255, 20, 110, 184);
+    return Drawer(
+      child: ListView(
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF146EB8),
+                  Color(0xFF0A192F),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'images/logo.png',
+                          width: 45,
+                          height: 45,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'AVM Global',
+                            style: GoogleFonts.notoSans(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Consultants',
+                            style: GoogleFonts.notoSans(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          ExpansionTile(
+            title: Text('For Businesses', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
+            children: [
+              'Professional Services',
+              'Staffing Services',
+              'Expertise',
+              'Stratergy & Transformation',
+              'Software & Cloud Engineering',
+              'Quality Assurance & Engineering',
+              'Data Analytics & AI',
+              'Service Management',
+              'DevOps & DevSecOps',
+            ].map((item) => ListTile(
+              title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
+              onTap: () => Navigator.pop(context),
+            )).toList(),
+          ),
+          ExpansionTile(
+            title: Text('For Job Seekers', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
+            children: [
+              'Search IT Jobs',
+              'Working with AVM Global',
+              'AVM Global Academy',
+              'International Programs',
+            ].map((item) => ListTile(
+              title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
+              onTap: () => Navigator.pop(context),
+            )).toList(),
+          ),
+          ExpansionTile(
+            title: Text('Industries', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
+            children: [
+              'Healthcare',
+              'Technology',
+              'Life Sciences',
+              'Financial Services & Insurance',
+              'Retail & Consumer Packaged Goods',
+              'Public Sector',
+              'Video Games',
+            ].map((item) => ListTile(
+              title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
+              onTap: () => Navigator.pop(context),
+            )).toList(),
+          ),
+          ListTile(
+            title: Text('Insights', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
+            onTap: () => Navigator.pop(context),
+          ),
+          ListTile(
+            title: Text('Testimonials', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
+            onTap: () {
+              Navigator.pop(context);
+              _scrollToSection(_testimonialsKey);
+            },
+          ),
+          ExpansionTile(
+            title: Text('About Us', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
+            children: [
+              'Leadership',
+              'Social Responsibility',
+              'Corporate Careers',
+              'Locations',
+              'Contact Us',
+            ].map((item) => ListTile(
+              title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
+              onTap: () {
+                Navigator.pop(context);
+                if (item == 'Contact Us') {
+                  _showContactDialog(context);
+                }
+              },
+            )).toList(),
+          ),
+          const Divider(),
+          ListTile(
+            leading: Icon(Icons.admin_panel_settings_rounded, color: contact_button_color),
+            title: Text(
+              'Admin Panel',
+              style: GoogleFonts.notoSans(
+                fontWeight: FontWeight.bold,
+                color: contact_button_color,
+              ),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              _showAdminDashboard(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     final double w = MediaQuery.of(context).size.width;
@@ -38,18 +214,22 @@ class _MyHomePageState extends State<MyHomePage> {
     return w < 1100
         ? Scaffold(
             appBar: AppBar(
+              toolbarHeight: w < 600 ? 65.0 : null,
               backgroundColor: Colors.white,
+              titleSpacing: w < 600 ? 16.0 : 8.0,
+              scrolledUnderElevation: 0,
+              surfaceTintColor: Colors.transparent,
               elevation: 1.0,
               iconTheme: const IconThemeData(color: Colors.black),
               title: Row(
                 children: [
                   Image.asset(
                     'images/logo.png',
-                    fit: BoxFit.fitHeight,
-                    width: 60,
-                    height: 40,
+                    fit: BoxFit.contain,
+                    width: w < 600 ? null : 60,
+                    height: w < 600 ? 52 : 40,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: w < 600 ? 10 : 8),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -57,7 +237,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       Text(
                         'AVM Global',
                         style: GoogleFonts.notoSans(
-                          fontSize: 14,
+                          fontSize: w < 600 ? 16 : 14,
                           fontWeight: FontWeight.w600,
                           color: const Color.fromARGB(255, 20, 110, 184),
                         ),
@@ -66,7 +246,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         'Consultants',
                         style: GoogleFonts.notoSans(
                           fontWeight: FontWeight.w500,
-                          fontSize: 11,
+                          fontSize: w < 600 ? 12 : 11,
                           color: Colors.black,
                         ),
                       ),
@@ -75,100 +255,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ],
               ),
             ),
-            endDrawer: Drawer(
-              child: ListView(
-                children: [
-                  DrawerHeader(
-                    decoration: const BoxDecoration(
-                      color: Color.fromARGB(255, 20, 110, 184),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          'AVM Menu',
-                          style: GoogleFonts.notoSans(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'AVM Global Consultants',
-                          style: GoogleFonts.notoSans(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ExpansionTile(
-                    title: Text('For Businesses', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
-                    children: [
-                      'Professional Services',
-                      'Staffing Services',
-                      'Expertise',
-                      'Stratergy & Transformation',
-                      'Software & Cloud Engineering',
-                      'Quality Assurance & Engineering',
-                      'Data Analytics & AI',
-                      'Service Management',
-                      'DevOps & DevSecOps',
-                    ].map((item) => ListTile(
-                      title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
-                      onTap: () => Navigator.pop(context),
-                    )).toList(),
-                  ),
-                  ExpansionTile(
-                    title: Text('For Job Seekers', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
-                    children: [
-                      'Search IT Jobs',
-                      'Working with AVM Global',
-                      'AVM Global Academy',
-                      'International Programs',
-                    ].map((item) => ListTile(
-                      title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
-                      onTap: () => Navigator.pop(context),
-                    )).toList(),
-                  ),
-                  ExpansionTile(
-                    title: Text('Industries', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
-                    children: [
-                      'Healthcare',
-                      'Technology',
-                      'Life Sciences',
-                      'Financial Services & Insurance',
-                      'Retail & Consumer Packaged Goods',
-                      'Public Sector',
-                      'Video Games',
-                    ].map((item) => ListTile(
-                      title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
-                      onTap: () => Navigator.pop(context),
-                    )).toList(),
-                  ),
-                  ListTile(
-                    title: Text('Insights', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
-                    onTap: () => Navigator.pop(context),
-                  ),
-                  ExpansionTile(
-                    title: Text('About Us', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
-                    children: [
-                      'Leadership',
-                      'Social Responsibility',
-                      'Corporate Careers',
-                      'Locations',
-                      'Contact Us',
-                    ].map((item) => ListTile(
-                      title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
-                      onTap: () => Navigator.pop(context),
-                    )).toList(),
-                  ),
-                ],
-              ),
-            ),
+            endDrawer: _buildDrawer(context),
             body: SingleChildScrollView(
               child: Column(
                 children: [
@@ -186,7 +273,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                       Container(
                         height: 380,
-                        color: Colors.black.withValues(alpha: 0.45),
+                        color: const Color(0xFF0A192F).withValues(alpha: 0.65),
                       ),
                       Positioned(
                         left: 20,
@@ -196,7 +283,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Fueled by Passion,\nMeasured by\nImpact',
+                              'Connecting Indian\nTalent with\nGlobal Opportunities',
                               style: GoogleFonts.notoSans(
                                 fontSize: 32,
                                 fontWeight: FontWeight.w700,
@@ -206,7 +293,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             ),
                             const SizedBox(height: 15),
                             Text(
-                              'Creating opportunities for tech talent and\ninnovative organizations',
+                              'Your trusted government-approved gateway to careers in Europe, Middle East, Canada, and Australia.',
                               style: GoogleFonts.notoSans(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500,
@@ -272,7 +359,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'AVM is a global leader in technology services and talent, delivering transformative solutions at the speed of change.',
+                          'AVM Global Consultants is a premier overseas manpower recruitment and educational consultancy.',
                           style: GoogleFonts.notoSans(
                             fontSize: 22,
                             height: 1.3,
@@ -282,7 +369,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          'AVM empowers organizations to modernize tech infrastructure, streamline operations, and accelerate innovation through expert consulting services in cloud, AI, data and application. We deliver agile solutions and top-tier tech talent that reduce cost, mitigate risk, and simplify complexity. Acting as an extension of your team, we provide deep expertise and measurable results – at scale.',
+                          'Fully licensed and certified (ISO 9001:2015), we connect top-tier Indian talent with leading global companies. We prioritize candidate satisfaction, transparency, and ethical recruitment practices above all else. Acting as your gateway to international careers, we handle visa processing, background verification, and end-to-end relocation support.',
                           style: GoogleFonts.notoSans(
                             fontSize: 15,
                             height: 1.4,
@@ -346,7 +433,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
-                          'Services',
+                          'Our Core Pillars',
                           style: GoogleFonts.notoSans(
                             fontSize: 24,
                             fontWeight: FontWeight.w600,
@@ -355,7 +442,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                         const SizedBox(height: 15),
                         Text(
-                          'We deliver flexible, scalable solutions that meet organizations where they are – helping clients accelerate outcomes, optimize operations and stay future-ready.',
+                          'We operate on a foundation of trust, transparency, and global reach – helping candidates secure their dream careers and global employers find top-tier talent.',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.notoSans(
                             fontSize: 15,
@@ -369,22 +456,22 @@ class _MyHomePageState extends State<MyHomePage> {
                           defaultSize: 120,
                           hoverSize: 200,
                           width: w - 40,
-                          height: 380,
+                          height: 450,
                           imageName: 'images/faded_logo.png',
                           animatedImage: 'images/prof_logo.png',
-                          text1: 'Professional Services',
-                          text2: 'Driving value across the full technology life cycle.',
+                          text1: 'Recruitment Services',
+                          text2: 'Connecting Indian talent with leading global companies across Europe, UK, Canada, and the Gulf.',
                         ),
                         const SizedBox(height: 20),
                         AnimatedCard(
                           defaultSize: 80,
                           hoverSize: 150,
                           width: w - 40,
-                          height: 380,
+                          height: 450,
                           imageName: 'images/faded_logo.png',
                           animatedImage: 'images/staff_logo.png',
-                          text1: 'Staffing Services',
-                          text2: 'Delivering success through our fast and flexible talent network.',
+                          text1: 'Visa & Relocation Support',
+                          text2: 'Handling full documentation, licensing, background verifications, and end-to-end relocation support.',
                         ),
                       ],
                     ),
@@ -397,7 +484,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
-                          'Expertise',
+                          'Sectors We Recruit For',
                           style: GoogleFonts.notoSans(
                             fontSize: 24,
                             fontWeight: FontWeight.w600,
@@ -406,7 +493,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                         const SizedBox(height: 15),
                         Text(
-                          'Our business drives long-term customer success through six specialized areas – delivering measurable impact in technology, talent and digital transformation',
+                          'We source and place top-tier talent across six major global industries, ensuring matches that align skills with international requirements.',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.notoSans(
                             fontSize: 15,
@@ -419,9 +506,9 @@ class _MyHomePageState extends State<MyHomePage> {
                         FeatureCard(
                           baseColor: const Color(0xFF9e2a2b),
                           icon: Icons.star_border,
-                          title: 'Strategy &\nTransformation',
-                          firstText: 'Fueling Vision',
-                          secondText: 'Delivering Value.',
+                          title: 'Information\nTechnology',
+                          firstText: 'Software & Development',
+                          secondText: 'Sourcing senior developers & architects.',
                           image: 'images/logo1.png',
                           width: w - 40,
                           height: 450,
@@ -430,9 +517,9 @@ class _MyHomePageState extends State<MyHomePage> {
                         FeatureCard(
                           baseColor: const Color(0xFF183a37),
                           icon: Icons.star_border,
-                          title: 'Software & Cloud\nEngineering',
-                          firstText: 'Robust Software',
-                          secondText: 'Seamless Integration.',
+                          title: 'Healthcare &\nMedicine',
+                          firstText: 'Nursing & General Medicine',
+                          secondText: 'Placing registered nurses & doctors.',
                           image: 'images/logo2.png',
                           width: w - 40,
                           height: 450,
@@ -441,9 +528,9 @@ class _MyHomePageState extends State<MyHomePage> {
                         FeatureCard(
                           baseColor: const Color(0xFF33507B),
                           icon: Icons.star_border,
-                          title: 'Quality Assurance &\nEngineering',
-                          firstText: 'Elevate Quality',
-                          secondText: 'Accelerate Delivery.',
+                          title: 'Engineering &\nConstruction',
+                          firstText: 'Structural & Civil Engineering',
+                          secondText: 'Recruiting civil & structural engineers.',
                           image: 'images/logo3.png',
                           width: w - 40,
                           height: 450,
@@ -452,9 +539,9 @@ class _MyHomePageState extends State<MyHomePage> {
                         FeatureCard(
                           baseColor: const Color(0xFFdc2f02),
                           icon: Icons.star_border,
-                          title: 'Data, Analytics & AI',
-                          firstText: 'Smarter Data,',
-                          secondText: 'Faster Decisions.',
+                          title: 'Manufacturing &\nIndustrial',
+                          firstText: 'Precision & Machinery',
+                          secondText: 'CNC machinists, welders & technicians.',
                           image: 'images/logo4.png',
                           width: w - 40,
                           height: 450,
@@ -463,9 +550,9 @@ class _MyHomePageState extends State<MyHomePage> {
                         FeatureCard(
                           baseColor: const Color(0xFF869882),
                           icon: Icons.star_border,
-                          title: 'Service Management',
-                          firstText: 'Streamline Services,',
-                          secondText: 'Optimize Experience.',
+                          title: 'Hospitality &\nCulinary',
+                          firstText: 'Management & Culinary Arts',
+                          secondText: 'Placing operations managers & chefs.',
                           image: 'images/logo5.png',
                           width: w - 40,
                           height: 450,
@@ -474,9 +561,9 @@ class _MyHomePageState extends State<MyHomePage> {
                         FeatureCard(
                           baseColor: const Color(0xFF231942),
                           icon: Icons.star_border,
-                          title: 'DevOps & DevSecOps',
-                          firstText: 'Drive Innovation,',
-                          secondText: 'Enhance Security.',
+                          title: 'Automotive &\nRepairs',
+                          firstText: 'Diagnostics & Repair',
+                          secondText: 'Placing automotive engineers & technicians.',
                           image: 'images/logo6.png',
                           width: w - 40,
                           height: 450,
@@ -502,7 +589,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                         const SizedBox(height: 30),
                         Text(
-                          'AVM is a Global Leader in Tech Workforce Solutions',
+                          'AVM is a Government Approved Recruiting Agency',
                           style: GoogleFonts.notoSans(
                             fontSize: 22,
                             height: 1.3,
@@ -512,7 +599,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                         const SizedBox(height: 15),
                         Text(
-                          'Recognized by Everest Group as a Leader on the PEAK Matrix® for the fourth consecutive year, we deliver unmatched expertise and real results. See how our solutions accelerate success',
+                          'Licensed by the Ministry of External Affairs, Government of India, we guarantee complete legal compliance, background verifications, and legitimate work contracts for all international job placements.',
                           style: GoogleFonts.notoSans(
                             fontSize: 15,
                             height: 1.4,
@@ -558,6 +645,9 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
 
+                  // Testimonials Section
+                  TestimonialsSection(key: _testimonialsKey),
+
                   // 6. Contact Footer Section
                   Stack(
                     children: [
@@ -569,7 +659,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                       Container(
                         height: 260,
-                        color: Colors.black.withValues(alpha: 0.35),
+                        color: const Color(0xFF0A192F).withValues(alpha: 0.55),
                       ),
                       Positioned(
                         left: 20,
@@ -579,7 +669,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Get In Touch',
+                              'Ready to Work Abroad?',
                               style: GoogleFonts.notoSans(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w600,
@@ -588,7 +678,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              'See how AVM can deliver the most powerful combination of professional and staffing services to drive business performance.',
+                              'Register with AVM Global Consultants today and take the first step towards a rewarding global career in your field of expertise.',
                               style: GoogleFonts.notoSans(
                                 fontSize: 14,
                                 height: 1.3,
@@ -609,7 +699,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               height: 48,
                               width: 180,
                               child: InkWell(
-                                onTap: () {},
+                                onTap: () => _showContactDialog(context),
                                 child: Center(
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -645,7 +735,8 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           )
         : Scaffold(
-          appBar: PreferredSize(
+            endDrawer: _buildDrawer(context),
+            appBar: PreferredSize(
             // 1. Define the desired size
             preferredSize: const Size.fromHeight(
               110.0,
@@ -653,6 +744,8 @@ class _MyHomePageState extends State<MyHomePage> {
             // 2. Place the AppBar inside the child property
             child: AppBar(
               backgroundColor: Colors.white,
+              scrolledUnderElevation: 0,
+              surfaceTintColor: Colors.transparent,
               flexibleSpace: FlexibleSpaceBar(
                 // titlePadding: EdgeInsets.zero, // Remove default title padding
                 // centerTitle:
@@ -815,58 +908,70 @@ class _MyHomePageState extends State<MyHomePage> {
                             ),
                           ),
                           SizedBox(width: 50),
-                          const HoverText(
-                            dropdownItems: [
-                              'Leadership',
-                              'Social Responsibility',
-                              'Corporate Careers',
-                              'Locations',
-                              'Contact Us',
-                            ],
-
-                            text: 'About Us',
-                            // Define your colors clearly
-                            defaultStyle: TextStyle(
+                          HoverText(
+                            dropdownItems: const [],
+                            text: 'Testimonials',
+                            onTap: () => _scrollToSection(_testimonialsKey),
+                            defaultStyle: const TextStyle(
                               color: Colors.black,
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
-                            hoverStyle: TextStyle(
+                            hoverStyle: const TextStyle(
                               color: Color.fromARGB(255, 20, 110, 184),
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           SizedBox(width: 50),
-                          HoverClickableButton(
-                            text: 'Menu',
-                            dropdownItems: ['Drawer Box'],
-                            defaultStyle: TextStyle(
+                          HoverText(
+                            dropdownItems: const [
+                              'Leadership',
+                              'Social Responsibility',
+                              'Corporate Careers',
+                              'Locations',
+                              'Contact Us',
+                            ],
+                            text: 'About Us',
+                            onDropdownItemSelected: (item) {
+                              if (item == 'Contact Us') {
+                                _showContactDialog(context);
+                              }
+                            },
+                            // Define your colors clearly
+                            defaultStyle: const TextStyle(
                               color: Colors.black,
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
-                            hoverStyle: TextStyle(
+                            hoverStyle: const TextStyle(
                               color: Color.fromARGB(255, 20, 110, 184),
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-
-                          //       Builder(
-                          //         builder: (BuildContext innerContext) {
-                          //           return AnimatedUnderlineMenuItem(
-                          //             text: 'Menu',
-                          //             onTap: () {
-
-                          // //  _showOverlay();
-                          //               Scaffold.of(
-                          //                 innerContext,
-                          //               ).openEndDrawer();
-                          //             },
-                          //           );
-                          //         },
-                          //       ),
+                          SizedBox(width: 50),
+                          Builder(
+                            builder: (BuildContext innerContext) {
+                              return HoverText(
+                                dropdownItems: const [],
+                                text: 'Menu',
+                                onTap: () {
+                                  Scaffold.of(innerContext).openEndDrawer();
+                                },
+                                defaultStyle: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                hoverStyle: const TextStyle(
+                                  color: Color.fromARGB(255, 20, 110, 184),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              );
+                            },
+                          ),
                           // IconButton(
                           //   icon: const Icon(Icons.menu),
                           //   onPressed: () {
@@ -904,12 +1009,16 @@ class _MyHomePageState extends State<MyHomePage> {
 
                       // Set the container to fill the entire screen space
                     ),
+                    Container(
+                      height: 600,
+                      color: const Color(0xFF0A192F).withValues(alpha: 0.65),
+                    ),
                     Positioned(
                       left: 70,
                       top: 50,
                       child: Text(
                         textAlign: TextAlign.left,
-                        'Fueled by Passion, \nMeasured by\nImpact',
+                        'Connecting Indian \nTalent with\nGlobal Opportunities',
                         style: GoogleFonts.notoSans(
                           fontSize: 47,
                           fontWeight: FontWeight.w700,
@@ -922,7 +1031,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       top: 290,
                       child: Text(
                         textAlign: TextAlign.left,
-                        'Creating oppurtunities for tech talent and, \ninnovative organizations',
+                        'Your trusted government-approved gateway to careers in Europe, Middle East, Canada, and Australia.',
                         style: GoogleFonts.notoSans(
                           fontSize: 17,
                           fontWeight: FontWeight.w500,
@@ -952,10 +1061,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             });
                           },
 
-                          hoverColor:
-                              _isHovering == true
-                                  ? Colors.white
-                                  : Colors.transparent,
+                          hoverColor: Colors.transparent,
                           onTap: () {},
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -963,7 +1069,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'FOR  BUSINESSES',
+                                'EXPLORE JOBS',
                                 style: GoogleFonts.notoSans(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w600,
@@ -1007,10 +1113,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             });
                           },
 
-                          hoverColor:
-                              _isHovering1 == true
-                                  ? Colors.white
-                                  : Colors.transparent,
+                          hoverColor: Colors.transparent,
                           onTap: () {},
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -1018,7 +1121,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'FOR  JOB SEEKERS',
+                                'REGISTER NOW',
                                 style: GoogleFonts.notoSans(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w600,
@@ -1052,7 +1155,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         left: 50,
                         top: 70,
                         child: Text(
-                          'AVM is a global leader in technology\nservices and talent, delivering\ntransformative solutions at the speed of\nchange.',
+                          'AVM Global Consultants is a premier\noverseas manpower recruitment and\neducational consultancy.',
                           style: GoogleFonts.notoSans(
                             fontSize: 25,
                             height: 1.3,
@@ -1065,7 +1168,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         left: 50,
                         top: 220,
                         child: Text(
-                          'AVM empowers organizations to modernize tech infrastructure,\nstreamline operations, and accelerate innovation through expert\nconsulting services in cloud, AI, data and application. We deliver agile\nsolutions and top-tier tech talent that reduce cost, mitigate risk, and\nsimplify complexity. Acting as an extension of your team, we provide\ndeep expertise and measurable results – at scale.',
+                          'Fully licensed and certified (ISO 9001:2015), we connect top-tier Indian\ntalent with leading global companies. We prioritize candidate satisfaction,\ntransparency, and ethical recruitment practices above all else. Acting as\nyour gateway to international careers, we handle visa processing,\nbackground verification, and end-to-end relocation support.',
                           style: GoogleFonts.notoSans(
                             fontSize: 16,
                             height: 1.3,
@@ -1099,10 +1202,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               });
                             },
 
-                            hoverColor:
-                                _isHovering1 == true
-                                    ? Color.fromARGB(255, 20, 110, 184)
-                                    : Colors.transparent,
+                            hoverColor: Colors.transparent,
                             onTap: () {},
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
@@ -1160,7 +1260,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: Column(
                     children: [
                       Text(
-                        'Services',
+                        'Our Core Pillars',
                         style: GoogleFonts.notoSans(
                           fontSize: 23,
                           height: 1.3,
@@ -1170,7 +1270,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                       SizedBox(height: 28),
                       Text(
-                        'We deliver flexible, scalable solutions that meet organizations where they are – helping clients\n                       accelerate outcomes, optimize operations and stay future-ready.',
+                        'We operate on a foundation of trust, transparency, and global reach – helping candidates\n                       secure their dream careers and global employers find top-tier talent.',
                         style: GoogleFonts.notoSans(
                           fontSize: 16,
                           height: 1.3,
@@ -1187,18 +1287,18 @@ class _MyHomePageState extends State<MyHomePage> {
                             hoverSize: 480,
                             imageName: 'images/faded_logo.png',
                             animatedImage: 'images/prof_logo.png',
-                            text1: 'Professional Services',
+                            text1: 'Recruitment Services',
                             text2:
-                                'Driving value across the full technology life cycle.',
+                                'Connecting Indian talent with leading global companies across Europe, UK, Canada, and the Gulf.',
                           ),
                           AnimatedCard(
                             defaultSize: 120,
                             hoverSize: 240,
                             imageName: 'images/faded_logo.png',
                             animatedImage: 'images/staff_logo.png',
-                            text1: 'Staffing Services',
+                            text1: 'Visa & Relocation Support',
                             text2:
-                                'Delivering success through our fast and flexible\n                            talent network.',
+                                'Handling full documentation, licensing, background verifications, and end-to-end relocation support.',
                           ),
                           /*
                           Stack(
@@ -1279,7 +1379,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: Column(
                     children: [
                       Text(
-                        'Expertise',
+                        'Sectors We Recruit For',
                         style: GoogleFonts.notoSans(
                           fontSize: 23,
                           height: 1.3,
@@ -1289,7 +1389,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                       SizedBox(height: 28),
                       Text(
-                        'Our business drives long-term customer success through six specialized areas – delivering\n            measurable impact in technology, talent and digital transformation',
+                        'We source and place top-tier talent across six major global industries, ensuring matches that align skills with international requirements.',
                         style: GoogleFonts.notoSans(
                           fontSize: 16,
                           height: 1.3,
@@ -1306,9 +1406,9 @@ class _MyHomePageState extends State<MyHomePage> {
                               child: FeatureCard(
                                 baseColor: Color(0xFF9e2a2b), // Dark Blue
                                 icon: Icons.star_border,
-                                title: 'Stratergy &\nTransformation',
-                                firstText: 'Fueling Vision',
-                                secondText: 'Delivering Value.',
+                                title: 'Information\nTechnology',
+                                firstText: 'Software & Development',
+                                secondText: 'Sourcing senior developers & architects.',
                                 image: 'images/logo1.png',
                               ),
                             ), // Card 1
@@ -1317,9 +1417,9 @@ class _MyHomePageState extends State<MyHomePage> {
                               child: FeatureCard(
                                 baseColor: Color(0xFF183a37), // Dark Blue
                                 icon: Icons.star_border,
-                                title: 'Software & Cloud,\nEngineering',
-                                firstText: 'Robust Software',
-                                secondText: 'Seamless Integration.',
+                                title: 'Healthcare &\nMedicine',
+                                firstText: 'Nursing & General Medicine',
+                                secondText: 'Placing registered nurses & doctors.',
                                 image: 'images/logo2.png',
                               ),
                             ), // Card 2
@@ -1328,9 +1428,9 @@ class _MyHomePageState extends State<MyHomePage> {
                               child: FeatureCard(
                                 baseColor: Color(0xFF33507B), // Dark Blue
                                 icon: Icons.star_border,
-                                title: 'Quality Assurance &,\nEngineering',
-                                firstText: 'Elevate Quality',
-                                secondText: 'Accelerate Delivery.',
+                                title: 'Engineering &\nConstruction',
+                                firstText: 'Structural & Civil Engineering',
+                                secondText: 'Recruiting civil & structural engineers.',
                                 image: 'images/logo3.png',
                               ),
                             ), // Card 3
@@ -1345,9 +1445,9 @@ class _MyHomePageState extends State<MyHomePage> {
                               child: FeatureCard(
                                 baseColor: Color(0xFFdc2f02), // Dark Blue
                                 icon: Icons.star_border,
-                                title: 'Data,Analytics & AI',
-                                firstText: 'Smarter Data,',
-                                secondText: 'Faster Decisions.',
+                                title: 'Manufacturing &\nIndustrial',
+                                firstText: 'Precision & Machinery',
+                                secondText: 'CNC machinists, welders & technicians.',
                                 image: 'images/logo4.png',
                               ),
                             ), // Card 1
@@ -1356,9 +1456,9 @@ class _MyHomePageState extends State<MyHomePage> {
                               child: FeatureCard(
                                 baseColor: Color(0xFF869882), // Dark Blue
                                 icon: Icons.star_border,
-                                title: 'Service Management',
-                                firstText: 'Streamline Services,',
-                                secondText: 'Optimize Experience.',
+                                title: 'Hospitality &\nCulinary',
+                                firstText: 'Management & Culinary Arts',
+                                secondText: 'Placing operations managers & chefs.',
                                 image: 'images/logo5.png',
                               ),
                             ), // Card 2
@@ -1367,9 +1467,9 @@ class _MyHomePageState extends State<MyHomePage> {
                               child: FeatureCard(
                                 baseColor: Color(0xFF231942), // Dark Blue
                                 icon: Icons.star_border,
-                                title: 'DevOps & DevSecOps',
-                                firstText: 'Drive Innovation,',
-                                secondText: 'Enhance Security.',
+                                title: 'Automotive &\nRepairs',
+                                firstText: 'Diagnostics & Repair',
+                                secondText: 'Placing automotive engineers & technicians.',
                                 image: 'images/logo6.png',
                               ),
                             ), // Card 3
@@ -1408,7 +1508,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         left: 500,
                         top: 130,
                         child: Text(
-                          'AVM is a Global Leader in Tech \nWorkforce Solutions',
+                          'AVM is a Government Approved \nRecruiting Agency',
                           style: GoogleFonts.notoSans(
                             fontSize: 25,
                             height: 1.3,
@@ -1421,7 +1521,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         left: 500,
                         top: 220,
                         child: Text(
-                          'Recognized by Everest Group as a Leader on the PEAK Matrix® for\nthe fourth consecutive year, we deliver unmatched expertise and real\nresults. See how our solutions accelerate success',
+                          'Licensed by the Ministry of External Affairs, Government of India, we guarantee\ncomplete legal compliance, background verifications, and legitimate work\ncontracts for all international job placements.',
                           style: GoogleFonts.notoSans(
                             fontSize: 16,
                             height: 1.3,
@@ -1455,10 +1555,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               });
                             },
 
-                            hoverColor:
-                                _isHovering1 == true
-                                    ? Color.fromARGB(255, 20, 110, 184)
-                                    : Colors.transparent,
+                            hoverColor: Colors.transparent,
                             onTap: () {},
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
@@ -1491,6 +1588,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     ],
                   ),
                 ),
+                // Testimonials Section
+                TestimonialsSection(key: _testimonialsKey),
                 Stack(
                   children: [
                     Image(
@@ -1499,11 +1598,16 @@ class _MyHomePageState extends State<MyHomePage> {
                       width: w,
                       height: h / 2.5,
                     ),
+                    Container(
+                      width: w,
+                      height: h / 2.5,
+                      color: const Color(0xFF0A192F).withValues(alpha: 0.55),
+                    ),
                     Positioned(
                       top: 50,
                       left: 150,
                       child: Text(
-                        'Get In Touch',
+                        'Ready to Work Abroad?',
                         style: GoogleFonts.notoSans(
                           fontSize: 25,
                           height: 1.3,
@@ -1516,7 +1620,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       top: 95,
                       left: 150,
                       child: Text(
-                        'See how AVM can deliver the most powerful combination of\nprofessional and staffing services to drive business\nperformance.',
+                        'Register with AVM Global Consultants today and take the first step\ntowards a rewarding global career in your field of expertise.',
                         style: GoogleFonts.notoSans(
                           fontSize: 16,
                           height: 1.3,
@@ -1555,59 +1659,15 @@ class _MyHomePageState extends State<MyHomePage> {
                     Positioned(
                       right: 260,
                       top: 140,
-                      child: Container(
-                        // color: Colors.black,
-                        decoration: BoxDecoration(
-                          color:
-                              _isHovering2 == true
-                                  ? contact_button_color
-                                  : Colors.white,
-                          border: Border.all(
-                            color: contact_button_color,
-                            width: 3,
-                          ),
-                          borderRadius: BorderRadius.all(Radius.circular(30)),
-                        ),
-                        height: 50,
-                        width: 200,
-                        child: InkWell(
-                          onHover: (thirdvalue) {
-                            setState(() {
-                              _isHovering2 = thirdvalue;
-                            });
-                          },
-
-                          hoverColor:
-                              _isHovering2 == true
-                                  ? Colors.white
-                                  : Colors.transparent,
-                          onTap: () {},
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'CONTACT US',
-                                style: GoogleFonts.notoSans(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 2,
-                                  color:
-                                      _isHovering2 == true
-                                          ? Colors.white
-                                          : contact_button_color,
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Icon(
-                                Icons.arrow_forward_rounded,
-                                color:
-                                    _isHovering2 == true
-                                        ? Colors.white
-                                        : contact_button_color,
-                              ),
-                            ],
-                          ),
-                        ),
+                      child: _HoverButton(
+                        text: 'CONTACT US',
+                        onTap: () => _showContactDialog(context),
+                        primaryColor: Colors.white,
+                        textColor: contact_button_color,
+                        hoverColor: contact_button_color,
+                        hoverTextColor: Colors.white,
+                        borderColor: contact_button_color,
+                        icon: Icons.arrow_forward_rounded,
                       ),
                     ),
                   ],
@@ -1815,4 +1875,639 @@ class _MyHomePageState extends State<MyHomePage> {
   );
 }
 */
+
+  void _showContactDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: SingleChildScrollView(
+              child: _ContactDialog(themeColor: contact_button_color),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAdminDashboard(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AdminDashboardDialog(themeColor: contact_button_color);
+      },
+    );
+  }
 }
+
+class _HoverButton extends StatefulWidget {
+  final String text;
+  final VoidCallback onTap;
+  final Color primaryColor;
+  final Color textColor;
+  final Color hoverColor;
+  final Color hoverTextColor;
+  final Color borderColor;
+  final double width;
+  final double height;
+  final double fontSize;
+  final IconData? icon;
+
+  const _HoverButton({
+    required this.text,
+    required this.onTap,
+    required this.primaryColor,
+    required this.textColor,
+    required this.hoverColor,
+    required this.hoverTextColor,
+    required this.borderColor,
+    this.width = 200,
+    this.height = 50,
+    this.fontSize = 17,
+    this.icon,
+  });
+
+  @override
+  State<_HoverButton> createState() => _HoverButtonState();
+}
+
+class _HoverButtonState extends State<_HoverButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: widget.width,
+          height: widget.height,
+          decoration: BoxDecoration(
+            color: _isHovered ? widget.hoverColor : widget.primaryColor,
+            border: Border.all(
+              color: widget.borderColor,
+              width: 3,
+            ),
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                widget.text,
+                style: GoogleFonts.notoSans(
+                  fontSize: widget.fontSize,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 2,
+                  color: _isHovered ? widget.hoverTextColor : widget.textColor,
+                ),
+              ),
+              if (widget.icon != null) ...[
+                const SizedBox(width: 10),
+                Icon(
+                  widget.icon,
+                  color: _isHovered ? widget.hoverTextColor : widget.textColor,
+                  size: widget.fontSize + 1,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ContactDialog extends StatefulWidget {
+  final Color themeColor;
+
+  const _ContactDialog({required this.themeColor});
+
+  @override
+  State<_ContactDialog> createState() => _ContactDialogState();
+}
+
+class _ContactDialogState extends State<_ContactDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _jobFieldController = TextEditingController();
+  bool _isLoading = false;
+  bool _isSubmitted = false;
+
+  Uint8List? _resumeBytes;
+  String? _resumeName;
+  bool _isPickingFile = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _jobFieldController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickResume() async {
+    setState(() => _isPickingFile = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx'],
+        allowMultiple: false,
+      );
+      if (result != null && result.files.single.bytes != null) {
+        setState(() {
+          _resumeBytes = result.files.single.bytes;
+          _resumeName = result.files.single.name;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking file: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingFile = false);
+      }
+    }
+  }
+
+  void _clearResume() {
+    setState(() {
+      _resumeBytes = null;
+      _resumeName = null;
+    });
+  }
+
+  void _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await FirebaseService.instance.submitContactInquiry(
+        name: _nameController.text.trim(),
+        jobField: _jobFieldController.text.trim(),
+        resumeFileName: _resumeName,
+        resumeFileBytes: _resumeBytes,
+      );
+      setState(() {
+        _isLoading = false;
+        _isSubmitted = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  void _copyEmail() {
+    Clipboard.setData(const ClipboardData(text: 'vishal@avmglobalconsultats.com'));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              'Email address copied to clipboard!',
+              style: GoogleFonts.notoSans(fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: widget.themeColor,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isSubmitted) {
+      return _buildSuccessView();
+    }
+
+    return _buildFormView();
+  }
+
+  Widget _buildSuccessView() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.check_circle_outline_rounded,
+              color: Colors.green,
+              size: 72,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Thank You!',
+            style: GoogleFonts.notoSans(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            "We'll get back to you.",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.notoSans(
+              fontSize: 16,
+              color: Colors.black54,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: widget.themeColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                'Close',
+                style: GoogleFonts.notoSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormView() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Get in Touch',
+                  style: GoogleFonts.notoSans(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
+                  splashRadius: 20,
+                  color: Colors.black54,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Fill out the form below or reach us directly via email. We look forward to connecting with you!',
+              style: GoogleFonts.notoSans(
+                fontSize: 14,
+                color: Colors.black54,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Name Field
+            Text(
+              'Your Name',
+              style: GoogleFonts.notoSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                hintText: 'Enter your full name',
+                hintStyle: GoogleFonts.notoSans(color: Colors.black38, fontSize: 14),
+                prefixIcon: Icon(Icons.person_outline_rounded, color: widget.themeColor.withOpacity(0.7)),
+                filled: true,
+                fillColor: Colors.grey[50],
+                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: widget.themeColor, width: 2),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.redAccent),
+                ),
+              ),
+              validator: (val) {
+                if (val == null || val.trim().isEmpty) {
+                  return 'Please enter your name';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
+
+            // Job Search Field
+            Text(
+              'Interested Line of Job Search',
+              style: GoogleFonts.notoSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _jobFieldController,
+              decoration: InputDecoration(
+                hintText: 'e.g., Software Dev, Nursing, Finance',
+                hintStyle: GoogleFonts.notoSans(color: Colors.black38, fontSize: 14),
+                prefixIcon: Icon(Icons.work_outline_rounded, color: widget.themeColor.withOpacity(0.7)),
+                filled: true,
+                fillColor: Colors.grey[50],
+                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: widget.themeColor, width: 2),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.redAccent),
+                ),
+              ),
+              validator: (val) {
+                if (val == null || val.trim().isEmpty) {
+                  return 'Please specify your job field';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
+
+            // Resume Upload Field
+            Text(
+              'Upload Resume (Optional)',
+              style: GoogleFonts.notoSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 6),
+            InkWell(
+              onTap: _isPickingFile ? null : _pickResume,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _resumeName != null ? widget.themeColor : Colors.grey[300]!,
+                    width: _resumeName != null ? 2 : 1,
+                  ),
+                ),
+                child: _resumeName != null
+                    ? Row(
+                        children: [
+                          Icon(
+                            _resumeName!.endsWith('.pdf')
+                                ? Icons.picture_as_pdf_rounded
+                                : Icons.description_rounded,
+                            color: widget.themeColor,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _resumeName!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.notoSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                Text(
+                                  'Ready to upload',
+                                  style: GoogleFonts.notoSans(
+                                    fontSize: 11,
+                                    color: Colors.green[700],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: _clearResume,
+                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                            splashRadius: 20,
+                          ),
+                        ],
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _isPickingFile
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1c6196)),
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.cloud_upload_outlined,
+                                  color: widget.themeColor.withOpacity(0.7),
+                                  size: 22,
+                                ),
+                          const SizedBox(width: 10),
+                          Text(
+                            _isPickingFile ? 'Selecting file...' : 'Choose PDF, DOC, or DOCX',
+                            style: GoogleFonts.notoSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Email Card
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: widget.themeColor.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: widget.themeColor.withOpacity(0.15),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.alternate_email_rounded,
+                    color: widget.themeColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Direct Contact Email',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        SelectableText(
+                          'vishal@avmglobalconsultats.com',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: _copyEmail,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Icon(
+                        Icons.copy_rounded,
+                        color: widget.themeColor,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+
+            // Submit Button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: widget.themeColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Text(
+                        'Submit Application',
+                        style: GoogleFonts.notoSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

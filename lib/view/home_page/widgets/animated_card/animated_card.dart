@@ -38,6 +38,7 @@ class _AnimatedCardState extends State<AnimatedCard> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isMobile = MediaQuery.of(context).size.width < 1100;
     return MouseRegion(
       // <--- Detects mouse entry/exit
       onEnter: (_) => setState(() => _isHovering = true),
@@ -61,8 +62,11 @@ class _AnimatedCardState extends State<AnimatedCard> {
             ),
           ),
 
-          // 3. Animated Logo (The Fix)
-          Positioned.fill(
+          // 3. Animated Logo (Top aligned to prevent overlap)
+          Positioned(
+            top: isMobile ? 40 : 60,
+            left: 0,
+            right: 0,
             child: Center(
               child: AnimatedContainer(
                 // <--- The animation widget
@@ -84,11 +88,11 @@ class _AnimatedCardState extends State<AnimatedCard> {
             ),
           ),
           Positioned(
-            // Centering the text horizontally
-            left: 0,
-            right: 0,
+            // Centering the text horizontally with side margins
+            left: 20,
+            right: 20,
             // Positioning the text from the bottom of the card
-            bottom: 40,
+            bottom: isMobile ? 35 : 40,
             child: Column(
               mainAxisSize:
                   MainAxisSize
@@ -98,7 +102,7 @@ class _AnimatedCardState extends State<AnimatedCard> {
                   widget.text1, // First line
                   textAlign: TextAlign.center,
                   style: GoogleFonts.notoSans(
-                    fontSize: 25,
+                    fontSize: isMobile ? 22 : 25,
                     height: 1.3,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -109,13 +113,13 @@ class _AnimatedCardState extends State<AnimatedCard> {
                   widget.text2, // Second line
                   textAlign: TextAlign.center,
                   style: GoogleFonts.notoSans(
-                    fontSize: 16,
+                    fontSize: isMobile ? 15 : 16,
                     height: 1.3,
                     fontWeight: FontWeight.w200,
                     color: Colors.white,
                   ),
                 ),
-                SizedBox(height: 30),
+                SizedBox(height: isMobile ? 20 : 30),
                 InkWell(
                   onTap: () {},
                   child: Text(

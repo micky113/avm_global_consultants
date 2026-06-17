@@ -7,6 +7,8 @@ class HoverText extends StatefulWidget {
   final TextStyle defaultStyle;
   final TextStyle hoverStyle;
   final List<String> dropdownItems;
+  final VoidCallback? onTap;
+  final ValueChanged<String>? onDropdownItemSelected;
 
   const HoverText({
     super.key,
@@ -15,6 +17,8 @@ class HoverText extends StatefulWidget {
     this.defaultStyle = const TextStyle(color: Colors.black),
     this.hoverStyle = const TextStyle(color: Colors.red),
     required this.dropdownItems,
+    this.onTap,
+    this.onDropdownItemSelected,
   });
 
   @override
@@ -101,7 +105,10 @@ class _HoverTextState extends State<HoverText> {
                                 widget.dropdownItems.map((item) {
                                   return InkWell(
                                     onTap: () {
-                                      // _hideOverlay();
+                                      _hideOverlay();
+                                      if (widget.onDropdownItemSelected != null) {
+                                        widget.onDropdownItemSelected!(item);
+                                      }
                                     },
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
@@ -147,12 +154,14 @@ class _HoverTextState extends State<HoverText> {
 
     return GestureDetector(
       onTap: () {
-        // 1. You should define what happens on a click here.
-        // For this widget, a click should likely trigger the dropdown to show/hide.
-        if (_overlayEntry == null) {
-          _showOverlay(); // Show the overlay on tap
+        if (widget.onTap != null) {
+          widget.onTap!();
         } else {
-          _hideOverlay(); // Hide the overlay on tap
+          if (_overlayEntry == null) {
+            _showOverlay(); // Show the overlay on tap
+          } else {
+            _hideOverlay(); // Hide the overlay on tap
+          }
         }
 
         // Optional: Add any other action for the button click
