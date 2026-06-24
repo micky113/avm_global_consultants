@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:avm_global_web/controllers/global_context_service/global_context_service.dart';
 import 'package:avm_global_web/routes/app_route_constants.dart';
 import 'package:avm_global_web/view/home_page/home_page.dart';
+import 'package:avm_global_web/view/jobs/jobs_page.dart';
 
 class MyAppRouter {
   GoRouter router = GoRouter(
@@ -15,6 +16,13 @@ class MyAppRouter {
           path: '/',
           pageBuilder: (context, state) {
             return MaterialPage(child: MyHomePage(title: 'Travelad', dropdownItems: ['Travelad'],));
+          },
+        ),
+        GoRoute(
+          name: MyAppRouteConstants.jobsRouteName,
+          path: '/jobs',
+          pageBuilder: (context, state) {
+            return const MaterialPage(child: JobsPage());
           },
         ),
         // GoRoute(

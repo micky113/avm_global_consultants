@@ -74,4 +74,5 @@ class MyAppRouteConstants {
   static const String chatRouteName = 'chatpage';
   static const String chatsAdminRouteName = 'chatsadminscreen';
   static const String testRouteName = 'testpage';
+  static const String jobsRouteName = 'jobs';
 }

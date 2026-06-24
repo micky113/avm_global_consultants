@@ -140,7 +140,12 @@ class _MyHomePageState extends State<MyHomePage> {
               'International Programs',
             ].map((item) => ListTile(
               title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                if (item == 'Search IT Jobs') {
+                  context.go('/jobs');
+                }
+              },
             )).toList(),
           ),
           ExpansionTile(
@@ -333,7 +338,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               height: 50,
                               width: double.infinity,
                               child: InkWell(
-                                onTap: () {},
+                                onTap: () => context.go('/jobs'),
                                 child: Center(
                                   child: Text(
                                     'FOR JOB SEEKERS',
@@ -1062,7 +1067,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           },
 
                           hoverColor: Colors.transparent,
-                          onTap: () {},
+                          onTap: () => context.go('/jobs'),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             // mainAxisSize: MainAxisSize.min,

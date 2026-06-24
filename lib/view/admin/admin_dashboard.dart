@@ -5,6 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:avm_global_web/services/firebase_service.dart';
 import 'package:avm_global_web/models/testimonial.dart';
+import 'package:avm_global_web/models/job.dart';
+import 'package:avm_global_web/models/job_application.dart';
 
 class AdminDashboardDialog extends StatefulWidget {
   final Color themeColor;
@@ -280,6 +282,18 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                         isLargeScreen: isLargeScreen,
                       ),
                       _buildSidebarItem(
+                        id: 'jobs',
+                        title: 'Manage Jobs',
+                        icon: Icons.work_rounded,
+                        isLargeScreen: isLargeScreen,
+                      ),
+                      _buildSidebarItem(
+                        id: 'job_applications',
+                        title: 'Job Applications',
+                        icon: Icons.assignment_turned_in_rounded,
+                        isLargeScreen: isLargeScreen,
+                      ),
+                      _buildSidebarItem(
                         id: 'testimonials',
                         title: 'Manage Testimonials',
                         icon: Icons.reviews_rounded,
@@ -295,7 +309,11 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                   color: Colors.grey[100],
                   child: _activeTab == 'inquiries'
                       ? _buildInquiriesPanel()
-                      : _buildTestimonialsPanel(),
+                      : _activeTab == 'jobs'
+                          ? _buildJobsPanel()
+                          : _activeTab == 'job_applications'
+                              ? _buildJobApplicationsPanel()
+                              : _buildTestimonialsPanel(),
                 ),
               ),
             ],
@@ -317,26 +335,47 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
               ],
             ),
             child: BottomNavigationBar(
-              currentIndex: _activeTab == 'inquiries' ? 0 : 1,
+              currentIndex: _activeTab == 'inquiries'
+                  ? 0
+                  : _activeTab == 'jobs'
+                      ? 1
+                      : _activeTab == 'job_applications'
+                          ? 2
+                          : 3,
               onTap: (index) {
                 setState(() {
-                  _activeTab = index == 0 ? 'inquiries' : 'testimonials';
+                  _activeTab = index == 0
+                      ? 'inquiries'
+                      : index == 1
+                          ? 'jobs'
+                          : index == 2
+                              ? 'job_applications'
+                              : 'testimonials';
                 });
               },
               selectedItemColor: widget.themeColor,
               unselectedItemColor: Colors.black38,
               showSelectedLabels: true,
               showUnselectedLabels: true,
-              selectedLabelStyle: GoogleFonts.notoSans(fontWeight: FontWeight.bold, fontSize: 12),
-              unselectedLabelStyle: GoogleFonts.notoSans(fontWeight: FontWeight.w500, fontSize: 12),
+              type: BottomNavigationBarType.fixed,
+              selectedLabelStyle: GoogleFonts.notoSans(fontWeight: FontWeight.bold, fontSize: 10),
+              unselectedLabelStyle: GoogleFonts.notoSans(fontWeight: FontWeight.w500, fontSize: 10),
               items: const [
                 BottomNavigationBarItem(
                   icon: Icon(Icons.contact_page_rounded),
                   label: 'Inquiries',
                 ),
                 BottomNavigationBarItem(
+                  icon: Icon(Icons.work_rounded),
+                  label: 'Jobs',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.assignment_turned_in_rounded),
+                  label: 'Apps',
+                ),
+                BottomNavigationBarItem(
                   icon: Icon(Icons.reviews_rounded),
-                  label: 'Testimonials',
+                  label: 'Reviews',
                 ),
               ],
             ),
@@ -1293,6 +1332,670 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                     elevation: 0,
                   ),
                   child: const Text('Save Changes', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Panel for managing Jobs
+  Widget _buildJobsPanel() {
+    final isMobilePanel = MediaQuery.of(context).size.width < 600;
+
+    return Column(
+      children: [
+        // Panel Header
+        Padding(
+          padding: EdgeInsets.all(isMobilePanel ? 12 : 24),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Job Openings',
+                style: GoogleFonts.notoSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _addEditJobDialog(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: widget.themeColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                label: Text(
+                  'Add New Job',
+                  style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // List of jobs
+        Expanded(
+          child: StreamBuilder<List<Job>>(
+            stream: FirebaseService.instance.getJobsStream(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('Error loading jobs: ${snapshot.error}'));
+              }
+              final jobs = snapshot.data ?? [];
+              if (jobs.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.work_off_rounded, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No job openings posted yet',
+                        style: GoogleFonts.notoSans(fontSize: 16, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: EdgeInsets.symmetric(horizontal: isMobilePanel ? 12 : 24),
+                itemCount: jobs.length,
+                itemBuilder: (context, index) {
+                  final job = jobs[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.grey[200]!),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(isMobilePanel ? 14 : 20),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: widget.themeColor.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(Icons.work_outline_rounded, color: widget.themeColor, size: 28),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  job.title,
+                                  style: GoogleFonts.notoSans(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Text(
+                                      '${job.company}  •  ${job.location}',
+                                      style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[100],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        job.type,
+                                        style: GoogleFonts.notoSans(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined),
+                                color: widget.themeColor,
+                                tooltip: 'Edit Job',
+                                onPressed: () => _addEditJobDialog(job),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded),
+                                color: Colors.redAccent,
+                                tooltip: 'Delete Job',
+                                onPressed: () => _confirmDeleteJob(job.id),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _confirmDeleteJob(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Job?'),
+        content: const Text('Are you sure you want to permanently delete this job listing? Applicants will no longer be able to apply to it.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await FirebaseService.instance.deleteJob(id);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Job listing deleted successfully!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error deleting job: $e'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Panel for viewing Job Applications
+  Widget _buildJobApplicationsPanel() {
+    final isMobilePanel = MediaQuery.of(context).size.width < 600;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Panel Header
+        Padding(
+          padding: EdgeInsets.all(isMobilePanel ? 12 : 24),
+          child: Text(
+            'Job Applications',
+            style: GoogleFonts.notoSans(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+
+        // List of applications
+        Expanded(
+          child: StreamBuilder<List<JobApplication>>(
+            stream: FirebaseService.instance.getJobApplicationsStream(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('Error loading applications: ${snapshot.error}'));
+              }
+              final applications = snapshot.data ?? [];
+              if (applications.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.inbox_rounded, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No job applications received yet',
+                        style: GoogleFonts.notoSans(fontSize: 16, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: EdgeInsets.symmetric(horizontal: isMobilePanel ? 12 : 24),
+                itemCount: applications.length,
+                itemBuilder: (context, index) {
+                  final app = applications[index];
+                  String formattedDate = '';
+                  try {
+                    formattedDate = '${app.appliedAt.day}/${app.appliedAt.month}/${app.appliedAt.year}';
+                  } catch (_) {}
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.grey[200]!),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(isMobilePanel ? 14 : 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: widget.themeColor.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(Icons.person_outline_rounded, color: widget.themeColor, size: 28),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      app.applicantName,
+                                      style: GoogleFonts.notoSans(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Applied For: ${app.jobTitle}',
+                                      style: GoogleFonts.notoSans(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: widget.themeColor,
+                                      ),
+                                    ),
+                                    if (formattedDate.isNotEmpty)
+                                      Text(
+                                        'Applied On: $formattedDate',
+                                        style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black38),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded),
+                                color: Colors.redAccent,
+                                tooltip: 'Delete Application',
+                                onPressed: () => _confirmDeleteJobApplication(app.id),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 24,
+                            runSpacing: 12,
+                            children: [
+                              _buildAppDetailField(Icons.email_outlined, 'Email', app.applicantEmail),
+                              _buildAppDetailField(Icons.phone_outlined, 'Phone', app.applicantPhone),
+                              if (app.resumeFileName.isNotEmpty)
+                                _buildAppDetailField(Icons.attach_file_rounded, 'Resume', app.resumeFileName, isLink: true, resumeUrl: app.resumeUrl),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAppDetailField(IconData icon, String label, String value, {bool isLink = false, String? resumeUrl}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: Colors.grey[500]),
+        const SizedBox(width: 6),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: GoogleFonts.notoSans(fontSize: 10, color: Colors.grey[400], fontWeight: FontWeight.bold)),
+            if (isLink && resumeUrl != null)
+              InkWell(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: resumeUrl));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Resume URL copied to clipboard!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                child: Text(
+                  value,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 13,
+                    color: widget.themeColor,
+                    fontWeight: FontWeight.bold,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              )
+            else
+              Text(value, style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _confirmDeleteJobApplication(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Application?'),
+        content: const Text('Are you sure you want to permanently delete this candidate application record?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await FirebaseService.instance.deleteJobApplication(id);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Job application deleted successfully!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Dialog form to Add or Edit jobs
+  void _addEditJobDialog([Job? job]) {
+    final formKey = GlobalKey<FormState>();
+    final titleCtrl = TextEditingController(text: job?.title ?? '');
+    final companyCtrl = TextEditingController(text: job?.company ?? '');
+    final locationCtrl = TextEditingController(text: job?.location ?? '');
+    final salaryCtrl = TextEditingController(text: job?.salaryRange ?? '');
+    final descCtrl = TextEditingController(text: job?.description ?? '');
+    final reqsCtrl = TextEditingController(text: job?.requirements ?? '');
+    String typeVal = job?.type ?? 'Full-time';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                job == null ? 'Add Job Opening' : 'Edit Job Opening',
+                style: GoogleFonts.notoSans(fontWeight: FontWeight.bold),
+              ),
+              content: SizedBox(
+                width: MediaQuery.of(context).size.width < 600
+                    ? MediaQuery.of(context).size.width * 0.9
+                    : 550,
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Title
+                        Text('Job Title', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: titleCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'e.g. Senior Software Engineer',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty ? 'Job title required' : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Company and Location
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Company', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                                  const SizedBox(height: 6),
+                                  TextFormField(
+                                    controller: companyCtrl,
+                                    decoration: InputDecoration(
+                                      hintText: 'e.g. Innovatech',
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                    validator: (val) => val == null || val.trim().isEmpty ? 'Company required' : null,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Location', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                                  const SizedBox(height: 6),
+                                  TextFormField(
+                                    controller: locationCtrl,
+                                    decoration: InputDecoration(
+                                      hintText: 'e.g. Munich, Germany',
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                    validator: (val) => val == null || val.trim().isEmpty ? 'Location required' : null,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Type and Salary Range
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Job Type', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                                  const SizedBox(height: 6),
+                                  DropdownButtonFormField<String>(
+                                    value: typeVal,
+                                    decoration: InputDecoration(
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    ),
+                                    items: const [
+                                      DropdownMenuItem(value: 'Full-time', child: Text('Full-time')),
+                                      DropdownMenuItem(value: 'Part-time', child: Text('Part-time')),
+                                      DropdownMenuItem(value: 'Contract', child: Text('Contract')),
+                                      DropdownMenuItem(value: 'Remote', child: Text('Remote')),
+                                      DropdownMenuItem(value: 'Hybrid', child: Text('Hybrid')),
+                                    ],
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setDialogState(() => typeVal = val);
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Salary Range', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                                  const SizedBox(height: 6),
+                                  TextFormField(
+                                    controller: salaryCtrl,
+                                    decoration: InputDecoration(
+                                      hintText: 'e.g. €70,000 - €85,000 / yr',
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                    validator: (val) => val == null || val.trim().isEmpty ? 'Salary required' : null,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Description
+                        Text('Job Description', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: descCtrl,
+                          maxLines: 4,
+                          decoration: InputDecoration(
+                            hintText: 'Type job description here...',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty ? 'Description required' : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Requirements
+                        Text('Job Requirements (Bulleted lines)', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: reqsCtrl,
+                          maxLines: 4,
+                          decoration: InputDecoration(
+                            hintText: '• Requirement 1\n• Requirement 2\n...',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty ? 'Requirements required' : null,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (!formKey.currentState!.validate()) return;
+
+                    final newJob = Job(
+                      id: job?.id ?? '',
+                      title: titleCtrl.text.trim(),
+                      company: companyCtrl.text.trim(),
+                      location: locationCtrl.text.trim(),
+                      type: typeVal,
+                      salaryRange: salaryCtrl.text.trim(),
+                      description: descCtrl.text.trim(),
+                      requirements: reqsCtrl.text.trim(),
+                      postedAt: job?.postedAt ?? DateTime.now(),
+                    );
+
+                    try {
+                      if (job == null) {
+                        await FirebaseService.instance.addJob(newJob);
+                      } else {
+                        await FirebaseService.instance.updateJob(newJob);
+                      }
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(job == null ? 'Job posted successfully!' : 'Job updated successfully!'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error saving: $e'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.themeColor,
+                    elevation: 0,
+                  ),
+                  child: const Text('Save Job', style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
