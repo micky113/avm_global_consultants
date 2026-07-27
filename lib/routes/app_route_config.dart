@@ -4,12 +4,16 @@ import 'package:avm_global_web/controllers/global_context_service/global_context
 import 'package:avm_global_web/routes/app_route_constants.dart';
 import 'package:avm_global_web/view/home_page/home_page.dart';
 import 'package:avm_global_web/view/jobs/jobs_page.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 class MyAppRouter {
+  static final FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+  static final FirebaseAnalyticsObserver observer =
+      FirebaseAnalyticsObserver(analytics: analytics);
+
   GoRouter router = GoRouter(
       navigatorKey: navigatorKey,
-      //refreshListener:
-      //urlPathStrategy:UrlPathStrategy.path,
+      observers: [observer],
       routes: [
         GoRoute(
           name: MyAppRouteConstants.homeRouteName,
@@ -22,7 +26,8 @@ class MyAppRouter {
           name: MyAppRouteConstants.jobsRouteName,
           path: '/jobs',
           pageBuilder: (context, state) {
-            return const MaterialPage(child: JobsPage());
+            final jobId = state.uri.queryParameters['id'];
+            return MaterialPage(child: JobsPage(initialJobId: jobId));
           },
         ),
         // GoRoute(

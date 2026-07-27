@@ -9,7 +9,8 @@ import 'package:avm_global_web/services/firebase_service.dart';
 import 'package:avm_global_web/view/admin/admin_dashboard.dart';
 
 class JobsPage extends StatefulWidget {
-  const JobsPage({super.key});
+  final String? initialJobId;
+  const JobsPage({super.key, this.initialJobId});
 
   @override
   State<JobsPage> createState() => _JobsPageState();
@@ -22,20 +23,39 @@ class _JobsPageState extends State<JobsPage> {
   String _searchQuery = '';
   String _selectedType = 'All'; // 'All', 'Full-time', 'Part-time', 'Contract', etc.
   Job? _selectedJob; // Used for split screen detailed view
+  bool _hasInitializedSelection = false;
 
   final List<String> _jobTypes = ['All', 'Full-time', 'Part-time', 'Contract', 'Remote', 'Hybrid'];
 
   late final ScrollController _pageScrollController;
+  late final Stream<List<Job>> _jobsStream;
+  late final TextEditingController _searchController;
+  late final FocusNode _pageFocusNode;
+
+  String _getShareUrl(String jobId) {
+    final baseUri = Uri.base;
+    final href = baseUri.toString();
+    if (href.contains('/#/')) {
+      return '${baseUri.origin}/#/jobs?id=$jobId';
+    } else {
+      return '${baseUri.origin}/jobs?id=$jobId';
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _pageScrollController = ScrollController();
+    _searchController = TextEditingController();
+    _jobsStream = FirebaseService.instance.getJobsStream();
+    _pageFocusNode = FocusNode();
   }
 
   @override
   void dispose() {
     _pageScrollController.dispose();
+    _searchController.dispose();
+    _pageFocusNode.dispose();
     super.dispose();
   }
 
@@ -121,7 +141,7 @@ class _JobsPageState extends State<JobsPage> {
         ),
       ),
       body: StreamBuilder<List<Job>>(
-        stream: FirebaseService.instance.getJobsStream(),
+        stream: _jobsStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -131,6 +151,22 @@ class _JobsPageState extends State<JobsPage> {
           }
 
           final jobs = snapshot.data ?? [];
+
+          // Initialize custom selection from query parameter if available
+          if (!_hasInitializedSelection && jobs.isNotEmpty) {
+            _hasInitializedSelection = true;
+            if (widget.initialJobId != null) {
+              final jobIndex = jobs.indexWhere((j) => j.id == widget.initialJobId);
+              if (jobIndex != -1) {
+                _selectedJob = jobs[jobIndex];
+                if (!isDesktop) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _showMobileDetailSheet(_selectedJob!);
+                  });
+                }
+              }
+            }
+          }
           
           // Filter jobs
           final filteredJobs = jobs.where((job) {
@@ -146,9 +182,48 @@ class _JobsPageState extends State<JobsPage> {
             _selectedJob = filteredJobs.first;
           }
 
-          return SingleChildScrollView(
-            controller: _pageScrollController,
-            child: Column(
+          return Focus(
+            focusNode: _pageFocusNode,
+            autofocus: true,
+            onKeyEvent: (FocusNode node, KeyEvent event) {
+              if (FocusManager.instance.primaryFocus?.context?.widget is EditableText) {
+                return KeyEventResult.ignored;
+              }
+              if (event is KeyDownEvent || event is KeyRepeatEvent) {
+                const double scrollAmount = 60.0;
+                if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                  if (_pageScrollController.hasClients) {
+                    final maxScroll = _pageScrollController.position.maxScrollExtent;
+                    final target = (_pageScrollController.offset + scrollAmount).clamp(0.0, maxScroll);
+                    _pageScrollController.animateTo(
+                      target,
+                      duration: const Duration(milliseconds: 100),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                  if (_pageScrollController.hasClients) {
+                    final maxScroll = _pageScrollController.position.maxScrollExtent;
+                    final target = (_pageScrollController.offset - scrollAmount).clamp(0.0, maxScroll);
+                    _pageScrollController.animateTo(
+                      target,
+                      duration: const Duration(milliseconds: 100),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                  return KeyEventResult.handled;
+                }
+              }
+              return KeyEventResult.ignored;
+            },
+            child: GestureDetector(
+              onTap: () {
+                _pageFocusNode.requestFocus();
+              },
+              child: SingleChildScrollView(
+                controller: _pageScrollController,
+                child: Column(
               children: [
                 // Banner / Search bar section
                 _buildHeroSection(isMobile),
@@ -195,7 +270,9 @@ class _JobsPageState extends State<JobsPage> {
                       ),
               ],
             ),
-          );
+          ),
+        ),
+      );
         },
       ),
     );
@@ -257,6 +334,7 @@ class _JobsPageState extends State<JobsPage> {
                   ],
                 ),
                 child: TextField(
+                  controller: _searchController,
                   onChanged: (val) => setState(() => _searchQuery = val),
                   decoration: InputDecoration(
                     hintText: 'Search title, company, location...',
@@ -488,18 +566,48 @@ class _JobsPageState extends State<JobsPage> {
                           ),
                         ),
                       ),
-                      ElevatedButton(
-                        onPressed: () => _showApplyDialog(job),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: themeColor,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          elevation: 0,
-                        ),
-                        child: Text(
-                          'Apply Now',
-                          style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              final shareUrl = _getShareUrl(job.id);
+                              Clipboard.setData(ClipboardData(text: shareUrl));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Job link copied to clipboard!'),
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: themeColor,
+                              side: BorderSide(color: themeColor),
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.share_rounded, size: 18),
+                            label: Text(
+                              'Share Job',
+                              style: GoogleFonts.notoSans(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            onPressed: () => _showApplyDialog(job),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: themeColor,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Apply Now',
+                              style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -713,27 +821,61 @@ class _JobsPageState extends State<JobsPage> {
                         ),
                       ),
                       const SizedBox(height: 32),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _showApplyDialog(job);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: themeColor,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          child: Text(
-                            'Apply Now',
-                            style: GoogleFonts.notoSans(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              fontSize: 15,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                final shareUrl = _getShareUrl(job.id);
+                                Clipboard.setData(ClipboardData(text: shareUrl));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Job link copied to clipboard!'),
+                                    behavior: SnackBarBehavior.floating,
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: themeColor,
+                                side: BorderSide(color: themeColor),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              icon: const Icon(Icons.share_rounded, size: 18),
+                              label: Text(
+                                'Share',
+                                style: GoogleFonts.notoSans(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _showApplyDialog(job);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: themeColor,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                elevation: 0,
+                              ),
+                              child: Text(
+                                'Apply Now',
+                                style: GoogleFonts.notoSans(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

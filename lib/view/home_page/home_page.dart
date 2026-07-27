@@ -38,6 +38,23 @@ class _MyHomePageState extends State<MyHomePage> {
 
   final GlobalKey _testimonialsKey = GlobalKey();
 
+  late final ScrollController _desktopScrollController;
+  late final FocusNode _desktopFocusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _desktopScrollController = ScrollController();
+    _desktopFocusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _desktopScrollController.dispose();
+    _desktopFocusNode.dispose();
+    super.dispose();
+  }
+
   void _scrollToSection(GlobalKey key) {
     if (key.currentContext != null) {
       Scrollable.ensureVisible(
@@ -315,7 +332,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               height: 50,
                               width: double.infinity,
                               child: InkWell(
-                                onTap: () {},
+                                onTap: () => _showAdminDashboard(context),
                                 child: Center(
                                   child: Text(
                                     'FOR BUSINESSES',
@@ -993,8 +1010,48 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
 
-          body: SingleChildScrollView(
-            child: Column(
+          body: Focus(
+            focusNode: _desktopFocusNode,
+            autofocus: true,
+            onKeyEvent: (FocusNode node, KeyEvent event) {
+              if (FocusManager.instance.primaryFocus?.context?.widget is EditableText) {
+                return KeyEventResult.ignored;
+              }
+              if (event is KeyDownEvent || event is KeyRepeatEvent) {
+                const double scrollAmount = 60.0;
+                if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                  if (_desktopScrollController.hasClients) {
+                    final maxScroll = _desktopScrollController.position.maxScrollExtent;
+                    final target = (_desktopScrollController.offset + scrollAmount).clamp(0.0, maxScroll);
+                    _desktopScrollController.animateTo(
+                      target,
+                      duration: const Duration(milliseconds: 100),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                  return KeyEventResult.handled;
+                } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                  if (_desktopScrollController.hasClients) {
+                    final maxScroll = _desktopScrollController.position.maxScrollExtent;
+                    final target = (_desktopScrollController.offset - scrollAmount).clamp(0.0, maxScroll);
+                    _desktopScrollController.animateTo(
+                      target,
+                      duration: const Duration(milliseconds: 100),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                  return KeyEventResult.handled;
+                }
+              }
+              return KeyEventResult.ignored;
+            },
+            child: GestureDetector(
+              onTap: () {
+                _desktopFocusNode.requestFocus();
+              },
+              child: SingleChildScrollView(
+                controller: _desktopScrollController,
+                child: Column(
               children: [
                 Stack(
                   children: [
@@ -1103,7 +1160,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         // color: Colors.black,
                         decoration: BoxDecoration(
                           color:
-                              _isHovering1 == true
+                              _isHovering2 == true
                                   ? Colors.white
                                   : Colors.transparent,
                           border: Border.all(color: Colors.white, width: 2),
@@ -1114,24 +1171,24 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: InkWell(
                           onHover: (secondvalue) {
                             setState(() {
-                              _isHovering1 = secondvalue;
+                              _isHovering2 = secondvalue;
                             });
                           },
 
                           hoverColor: Colors.transparent,
-                          onTap: () {},
+                          onTap: () => _showAdminDashboard(context),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'REGISTER NOW',
+                                'FOR EMPLOYERS',
                                 style: GoogleFonts.notoSans(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w600,
                                   color:
-                                      _isHovering1 == true
+                                      _isHovering2 == true
                                           ? Color.fromARGB(255, 20, 110, 184)
                                           : Colors.white,
                                 ),
@@ -1139,7 +1196,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               Icon(
                                 Icons.arrow_forward_rounded,
                                 color:
-                                    _isHovering1 == true
+                                    _isHovering2 == true
                                         ? Color.fromARGB(255, 20, 110, 184)
                                         : Colors.white,
                               ),
@@ -1681,7 +1738,9 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             ),
           ),
-        );
+        ),
+      ),
+    );
   }
 
   Future<List<String>> getFirebaseImageUrls(List<String> filePaths) async {
