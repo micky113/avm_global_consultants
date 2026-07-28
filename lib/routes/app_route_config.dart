@@ -11,25 +11,36 @@ class MyAppRouter {
   static final FirebaseAnalyticsObserver observer =
       FirebaseAnalyticsObserver(analytics: analytics);
 
-  GoRouter router = GoRouter(
-      navigatorKey: navigatorKey,
-      observers: [observer],
-      routes: [
-        GoRoute(
-          name: MyAppRouteConstants.homeRouteName,
-          path: '/',
-          pageBuilder: (context, state) {
-            return MaterialPage(child: MyHomePage(title: 'Travelad', dropdownItems: ['Travelad'],));
-          },
-        ),
-        GoRoute(
-          name: MyAppRouteConstants.jobsRouteName,
-          path: '/jobs',
-          pageBuilder: (context, state) {
-            final jobId = state.uri.queryParameters['id'];
-            return MaterialPage(child: JobsPage(initialJobId: jobId));
-          },
-        ),
+  static final GoRouter router = GoRouter(
+    navigatorKey: navigatorKey,
+    observers: [observer],
+    routes: [
+      GoRoute(
+        name: MyAppRouteConstants.homeRouteName,
+        path: '/',
+        pageBuilder: (context, state) {
+          return MaterialPage(
+            name: MyAppRouteConstants.homeRouteName,
+            key: state.pageKey,
+            child: MyHomePage(
+              title: 'AVM GLobal Consultants',
+              dropdownItems: const ['Avm Global Consultants'],
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        name: MyAppRouteConstants.jobsRouteName,
+        path: '/jobs',
+        pageBuilder: (context, state) {
+          final jobId = state.uri.queryParameters['id'];
+          return MaterialPage(
+            name: MyAppRouteConstants.jobsRouteName,
+            key: state.pageKey,
+            child: JobsPage(initialJobId: jobId),
+          );
+        },
+      ),
         // GoRoute(
         //   name: MyAppRouteConstants.aboutPageRouteName,
         //   path: '/about',
@@ -446,5 +457,5 @@ class MyAppRouter {
         //     return const MaterialPage(child: ChatsAdminScreen());
         //   },
         // ),
-      ]);
+    ]);
 }

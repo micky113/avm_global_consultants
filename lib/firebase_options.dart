@@ -18,5 +18,6 @@ class DefaultFirebaseOptions {
     storageBucket: 'avmglobal-consultants-113.firebasestorage.app',
     messagingSenderId: '650421354673',
     appId: '1:650421354673:web:5d6ccc5d8ed821000fa290',
+    measurementId: 'G-HE4YBL8GCQ',
   );
 }

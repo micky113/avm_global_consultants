@@ -7,6 +7,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:avm_global_web/services/firebase_service.dart';
 import 'package:avm_global_web/view/admin/admin_dashboard.dart';
 import 'package:avm_global_web/view/home_page/widgets/animated_card/animated_card.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'dart:js' as js;
+import 'package:flutter/foundation.dart';
 
 import 'package:avm_global_web/view/home_page/widgets/animated_underline_menu_item/animated_underline_menu_item.dart';
 import 'package:avm_global_web/view/home_page/widgets/featured_card/featured_card.dart';
@@ -46,6 +49,33 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     _desktopScrollController = ScrollController();
     _desktopFocusNode = FocusNode();
+
+    // Log analytics page view on enter
+    FirebaseAnalytics.instance.logScreenView(
+      screenName: 'Home',
+      screenClass: 'MyHomePage',
+    );
+    FirebaseAnalytics.instance.logEvent(
+      name: 'custom_page_view',
+      parameters: {
+        'page_path': '/',
+        'page_title': 'Home',
+        'page_location': '${Uri.base.origin}/',
+      },
+    );
+
+    // Direct GA4 Javascript event call for single page app (SPA) tracking
+    if (kIsWeb && js.context.hasProperty('gtag')) {
+      js.context.callMethod('gtag', [
+        'event',
+        'page_view',
+        js.JsObject.jsify({
+          'page_title': 'Home',
+          'page_path': '/',
+          'page_location': '${Uri.base.origin}/',
+        })
+      ]);
+    }
   }
 
   @override

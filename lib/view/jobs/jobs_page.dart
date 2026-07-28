@@ -7,6 +7,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:avm_global_web/models/job.dart';
 import 'package:avm_global_web/services/firebase_service.dart';
 import 'package:avm_global_web/view/admin/admin_dashboard.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'dart:js' as js;
+import 'package:flutter/foundation.dart';
 
 class JobsPage extends StatefulWidget {
   final String? initialJobId;
@@ -49,6 +52,33 @@ class _JobsPageState extends State<JobsPage> {
     _searchController = TextEditingController();
     _jobsStream = FirebaseService.instance.getJobsStream();
     _pageFocusNode = FocusNode();
+
+    // Log analytics page view on enter
+    FirebaseAnalytics.instance.logScreenView(
+      screenName: 'Jobs',
+      screenClass: 'JobsPage',
+    );
+    FirebaseAnalytics.instance.logEvent(
+      name: 'custom_page_view',
+      parameters: {
+        'page_path': '/jobs',
+        'page_title': 'Jobs',
+        'page_location': '${Uri.base.origin}/jobs',
+      },
+    );
+
+    // Direct GA4 Javascript event call for single page app (SPA) tracking
+    if (kIsWeb && js.context.hasProperty('gtag')) {
+      js.context.callMethod('gtag', [
+        'event',
+        'page_view',
+        js.JsObject.jsify({
+          'page_title': 'Jobs',
+          'page_path': '/jobs',
+          'page_location': '${Uri.base.origin}/jobs',
+        })
+      ]);
+    }
   }
 
   @override
