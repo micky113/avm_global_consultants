@@ -10,6 +10,10 @@ class Job {
   final String description;
   final String requirements;
   final DateTime postedAt;
+  final String phone;
+  final String email;
+  final String link;
+  final String name;
 
   const Job({
     required this.id,
@@ -21,6 +25,10 @@ class Job {
     required this.description,
     required this.requirements,
     required this.postedAt,
+    this.phone = '',
+    this.email = '',
+    this.link = '',
+    this.name = '',
   });
 
   factory Job.fromMap(String id, Map<String, dynamic> map) {
@@ -36,6 +44,10 @@ class Job {
       postedAt: map['postedAt'] is Timestamp
           ? (map['postedAt'] as Timestamp).toDate()
           : (map['postedAt'] != null ? DateTime.tryParse(map['postedAt'].toString()) ?? DateTime.now() : DateTime.now()),
+      phone: map['phone'] ?? '',
+      email: map['email'] ?? '',
+      link: map['link'] ?? '',
+      name: map['name'] ?? '',
     );
   }
 
@@ -49,6 +61,10 @@ class Job {
       'description': description,
       'requirements': requirements,
       'postedAt': Timestamp.fromDate(postedAt),
+      'phone': phone,
+      'email': email,
+      'link': link,
+      'name': name,
     };
   }
 }

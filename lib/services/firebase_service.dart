@@ -120,6 +120,10 @@ class FirebaseService {
         description: 'We are looking for a Senior Software Engineer with strong background in backend systems, JVM languages (Java/Kotlin), Spring Boot, and cloud architecture (AWS/GCP) to design scalable software solutions.',
         requirements: '• 5+ years of software development experience\n• Strong expertise in Spring Boot, REST APIs, and microservices\n• Experience with Docker, Kubernetes, and CI/CD pipelines\n• Fluent in English, German knowledge is a plus\n• Excellent problem-solving skills.',
         postedAt: DateTime.now().subtract(const Duration(days: 12)),
+        phone: '+49 89 123456',
+        email: 'jobs@innovatech.de',
+        link: 'https://innovatech.de/careers',
+        name: 'Hans Schmidt',
       ),
       Job(
         id: 'job_2',
@@ -131,6 +135,10 @@ class FirebaseService {
         description: 'Provide professional nursing care in accordance with nursing standards in our state-of-the-art Intensive Care Unit. Assist with clinical assessments, treatments, and patient care planning.',
         requirements: '• Degree/Diploma in Nursing\n• Registered Nurse (RN) designation or eligibility for registration with CNO\n• 2+ years of critical care / ICU nursing experience\n• IELTS score of 7.0+ or equivalent language validation\n• Empathetic and resilient nature.',
         postedAt: DateTime.now().subtract(const Duration(days: 8)),
+        phone: '+1 416 555 0192',
+        email: 'recruitment@ontariohealth.ca',
+        link: 'https://ontariohealth.ca/careers',
+        name: 'Emily Davis',
       ),
       Job(
         id: 'job_3',
@@ -142,6 +150,10 @@ class FirebaseService {
         description: 'Architect, implement, and maintain enterprise cloud infrastructure. Oversee cloud migration initiatives and enforce security protocols across AWS and Azure deployments.',
         requirements: '• 8+ years in IT infrastructure with 4+ years focusing on cloud architecture\n• Certified AWS Solutions Architect Professional or Azure Solutions Architect Expert\n• Deep expertise in Terraform, Ansible, and Infrastructure as Code\n• Strong communication and client-handling skills.',
         postedAt: DateTime.now().subtract(const Duration(days: 4)),
+        phone: '+1 604 555 0134',
+        email: 'careers@apexsystems.com',
+        link: 'https://apexsystems.com/jobs',
+        name: 'Ryan Mercer',
       ),
       Job(
         id: 'job_4',
@@ -153,6 +165,10 @@ class FirebaseService {
         description: 'Lead engineering tasks, quality checks, and site management for multi-story residential and commercial construction projects. Ensure compliance with safety standards and architectural blueprints.',
         requirements: '• Bachelor’s degree in Civil or Structural Engineering\n• 4+ years of on-site construction supervision/engineering experience\n• Experience with AutoCAD, Revit, and project management tools\n• Full working knowledge of Australian Building Codes (NCC).\n• Valid Driver’s License.',
         postedAt: DateTime.now().subtract(const Duration(days: 15)),
+        phone: '+61 2 9876 5432',
+        email: 'hr@pacificconstruction.com.au',
+        link: 'https://pacificconstruction.com.au/careers',
+        name: 'James Reynolds',
       ),
       Job(
         id: 'job_5',
@@ -164,6 +180,10 @@ class FirebaseService {
         description: 'Supervise daily resort operations including front office, guest relations, housekeeping, food & beverage, and event management. Focus on guest satisfaction, budget controls, and service excellence.',
         requirements: '• Degree in Hospitality Management or related field\n• 5+ years of leadership experience in 4/5-star hospitality settings\n• Excellent leadership, interpersonal, and communication skills\n• Experience managing multi-cultural teams\n• Strong financial acumen and budgeting skills.',
         postedAt: DateTime.now().subtract(const Duration(days: 6)),
+        phone: '+971 4 456 7890',
+        email: 'careers@oasisresorts.ae',
+        link: 'https://oasisresorts.ae/careers',
+        name: 'Amara Khan',
       ),
     ]);
     _jobsController.add(_localJobs);
@@ -683,6 +703,10 @@ class FirebaseService {
         description: job.description,
         requirements: job.requirements,
         postedAt: job.postedAt,
+        phone: job.phone,
+        email: job.email,
+        link: job.link,
+        name: job.name,
       );
 
       final index = _localJobs.indexWhere((j) => j.id == newJob.id);

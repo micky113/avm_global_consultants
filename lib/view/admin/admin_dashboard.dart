@@ -7,6 +7,8 @@ import 'package:avm_global_web/services/firebase_service.dart';
 import 'package:avm_global_web/models/testimonial.dart';
 import 'package:avm_global_web/models/job.dart';
 import 'package:avm_global_web/models/job_application.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:js' as js;
 
 class AdminDashboardDialog extends StatefulWidget {
   final Color themeColor;
@@ -19,28 +21,79 @@ class AdminDashboardDialog extends StatefulWidget {
 
 class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
   bool _isAuthenticated = false;
-  final _passcodeController = TextEditingController();
-  String? _passcodeError;
+  bool _isLoggingIn = false;
+  String? _loginError;
   String _activeTab = 'inquiries'; // 'inquiries' or 'testimonials'
 
   @override
+  void initState() {
+    super.initState();
+    // Pre-authenticate if the user is already signed in
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      final email = currentUser.email;
+      final authorizedEmails = [
+        'mohanty747@gmail.com',
+        'vishalmohapatra1928@gmail.com',
+      ];
+      if (email != null && authorizedEmails.contains(email.toLowerCase())) {
+        _isAuthenticated = true;
+      }
+    }
+  }
+
+  @override
   void dispose() {
-    _passcodeController.dispose();
     super.dispose();
   }
 
-  void _verifyPasscode() {
-    final code = _passcodeController.text.trim();
-    if (code == 'admin123') {
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isLoggingIn = true;
+      _loginError = null;
+    });
+
+    try {
+      if (!kIsWeb) {
+        throw UnsupportedError('Google Sign-In is only supported on Web. Please run this app in a Web Browser (e.g. Chrome).');
+      }
+
+      final googleProvider = GoogleAuthProvider();
+      final userCredential = await FirebaseAuth.instance.signInWithPopup(googleProvider);
+      final email = userCredential.user?.email;
+
+      final authorizedEmails = [
+        'mohanty747@gmail.com',
+        'vishalmohapatra1928@gmail.com',
+      ];
+
+      if (email != null && authorizedEmails.contains(email.toLowerCase())) {
+        setState(() {
+          _isAuthenticated = true;
+          _isLoggingIn = false;
+        });
+      } else {
+        await FirebaseAuth.instance.signOut();
+        setState(() {
+          _isLoggingIn = false;
+          _loginError = 'Access Denied: ${email ?? "Unknown email"} is not an authorized administrator.';
+        });
+      }
+    } catch (e) {
       setState(() {
-        _isAuthenticated = true;
-        _passcodeError = null;
-      });
-    } else {
-      setState(() {
-        _passcodeError = 'Invalid Passcode. Please try again.';
+        _isLoggingIn = false;
+        _loginError = 'Sign in failed: ${e.toString()}';
       });
     }
+  }
+
+  Future<void> _signOut() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {}
+    setState(() {
+      _isAuthenticated = false;
+    });
   }
 
   @override
@@ -74,7 +127,7 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
     );
   }
 
-  // Passcode Verification UI
+  // Google Sign-In Admin Authentication UI
   Widget _buildLoginView() {
     return Container(
       padding: const EdgeInsets.all(32.0),
@@ -109,7 +162,7 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Enter passcode to access AVM Global administrative dashboard.',
+                  'Sign in with Google to access AVM Global administrative dashboard.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.notoSans(
                     fontSize: 14,
@@ -117,66 +170,89 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                TextField(
-                  controller: _passcodeController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Admin Passcode',
-                    labelStyle: GoogleFonts.notoSans(color: Colors.black54),
-                    hintText: 'Enter passcode',
-                    errorText: _passcodeError,
-                    prefixIcon: Icon(Icons.lock_outline_rounded, color: widget.themeColor),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                if (_loginError != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: widget.themeColor, width: 2),
+                    child: Text(
+                      _loginError!,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.notoSans(
+                        fontSize: 13,
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                  onSubmitted: (_) => _verifyPasscode(),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 24),
+                ],
+                if (_isLoggingIn) ...[
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Authenticating via Google...',
+                    style: GoogleFonts.notoSans(
+                      fontSize: 13,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ] else ...[
+                  ElevatedButton(
+                    onPressed: _signInWithGoogle,
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.black87,
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: Colors.black12),
+                      ),
+                      elevation: 1,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.network(
+                          'https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/512px-Google_%22G%22_Logo.svg.png',
+                          height: 20,
+                          width: 20,
+                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.login_rounded, color: Colors.blue),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Sign in with Google',
+                          style: GoogleFonts.notoSans(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
                           ),
                         ),
-                        child: Text(
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
                           'Cancel',
                           style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, color: Colors.black54),
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _verifyPasscode,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: widget.themeColor,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: Text(
-                          'Unlock',
-                          style: GoogleFonts.notoSans(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -238,14 +314,9 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    tooltip: 'Lock Dashboard',
-                    icon: Icon(Icons.lock_open_rounded, color: Colors.white, size: isMobile ? 20 : 24),
-                    onPressed: () {
-                      setState(() {
-                        _isAuthenticated = false;
-                        _passcodeController.clear();
-                      });
-                    },
+                    tooltip: 'Sign Out',
+                    icon: Icon(Icons.logout_rounded, color: Colors.white, size: isMobile ? 20 : 24),
+                    onPressed: _signOut,
                   ),
                   IconButton(
                     tooltip: 'Close Management Console',
@@ -1467,6 +1538,76 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                                     ),
                                   ],
                                 ),
+                                if (job.phone.isNotEmpty || job.email.isNotEmpty || job.link.isNotEmpty || job.name.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 16,
+                                    runSpacing: 6,
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    children: [
+                                      if (job.name.isNotEmpty)
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.person_outline_rounded, size: 14, color: widget.themeColor.withOpacity(0.7)),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              job.name,
+                                              style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
+                                      if (job.phone.isNotEmpty)
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.phone_outlined, size: 14, color: widget.themeColor.withOpacity(0.7)),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              job.phone,
+                                              style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
+                                      if (job.email.isNotEmpty)
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.email_outlined, size: 14, color: widget.themeColor.withOpacity(0.7)),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              job.email,
+                                              style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
+                                      if (job.link.isNotEmpty)
+                                        InkWell(
+                                          onTap: () {
+                                            if (kIsWeb) {
+                                              js.context.callMethod('open', [job.link]);
+                                            }
+                                          },
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.link_rounded, size: 14, color: widget.themeColor),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'View Link',
+                                                style: GoogleFonts.notoSans(
+                                                  fontSize: 12,
+                                                  color: widget.themeColor,
+                                                  fontWeight: FontWeight.bold,
+                                                  decoration: TextDecoration.underline,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -1779,6 +1920,10 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
     final salaryCtrl = TextEditingController(text: job?.salaryRange ?? '');
     final descCtrl = TextEditingController(text: job?.description ?? '');
     final reqsCtrl = TextEditingController(text: job?.requirements ?? '');
+    final phoneCtrl = TextEditingController(text: job?.phone ?? '');
+    final emailCtrl = TextEditingController(text: job?.email ?? '');
+    final linkCtrl = TextEditingController(text: job?.link ?? '');
+    final nameCtrl = TextEditingController(text: job?.name ?? '');
     String typeVal = job?.type ?? 'Full-time';
 
     showDialog(
@@ -1939,6 +2084,98 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                           ),
                           validator: (val) => val == null || val.trim().isEmpty ? 'Requirements required' : null,
                         ),
+                        const SizedBox(height: 16),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Admin-Only Fields',
+                          style: GoogleFonts.notoSans(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: widget.themeColor,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Contact Name
+                        Text('Contact Name', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: nameCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'e.g. John Doe',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Phone and Email Row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Phone Number', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                                  const SizedBox(height: 6),
+                                  TextFormField(
+                                    controller: phoneCtrl,
+                                    decoration: InputDecoration(
+                                      hintText: 'e.g. +1 555-0199',
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Email ID', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                                  const SizedBox(height: 6),
+                                  TextFormField(
+                                    controller: emailCtrl,
+                                    decoration: InputDecoration(
+                                      hintText: 'e.g. admin@domain.com',
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                    validator: (val) {
+                                      if (val != null && val.trim().isNotEmpty) {
+                                        final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                                        if (!emailRegex.hasMatch(val.trim())) {
+                                          return 'Invalid email format';
+                                        }
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Link field
+                        Text('Link', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: linkCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'e.g. https://example.com/job-source',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          validator: (val) {
+                            if (val != null && val.trim().isNotEmpty) {
+                              if (!val.trim().startsWith('http://') && !val.trim().startsWith('https://')) {
+                                return 'URL must start with http:// or https://';
+                              }
+                            }
+                            return null;
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -1963,6 +2200,10 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                       description: descCtrl.text.trim(),
                       requirements: reqsCtrl.text.trim(),
                       postedAt: job?.postedAt ?? DateTime.now(),
+                      phone: phoneCtrl.text.trim(),
+                      email: emailCtrl.text.trim(),
+                      link: linkCtrl.text.trim(),
+                      name: nameCtrl.text.trim(),
                     );
 
                     try {
