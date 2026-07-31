@@ -610,14 +610,22 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                                 const Icon(Icons.attach_file_rounded, size: 16, color: Colors.black45),
                                 const SizedBox(width: 4),
                                 Expanded(
-                                  child: Text(
-                                    resumeFileName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.notoSans(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: widget.themeColor,
+                                  child: InkWell(
+                                    onTap: () {
+                                      if (resumeUrl.isNotEmpty) {
+                                        _openResume(resumeUrl);
+                                      }
+                                    },
+                                    child: Text(
+                                      resumeFileName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.notoSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: widget.themeColor,
+                                        decoration: TextDecoration.underline,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -633,18 +641,11 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                             children: [
                               if (resumeUrl.isNotEmpty)
                                 TextButton.icon(
-                                  icon: const Icon(Icons.copy_all_rounded, size: 18),
-                                  label: const Text('Copy Link'),
+                                  icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                                  label: const Text('View Resume'),
                                   style: TextButton.styleFrom(foregroundColor: widget.themeColor),
                                   onPressed: () {
-                                    Clipboard.setData(ClipboardData(text: resumeUrl));
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Resume URL copied to clipboard!'),
-                                        behavior: SnackBarBehavior.floating,
-                                        duration: Duration(seconds: 2),
-                                      ),
-                                    );
+                                    _openResume(resumeUrl);
                                   },
                                 ),
                               TextButton.icon(
@@ -705,12 +706,20 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                                   children: [
                                     const Icon(Icons.attach_file_rounded, size: 16, color: Colors.black45),
                                     const SizedBox(width: 4),
-                                    Text(
-                                      resumeFileName,
-                                      style: GoogleFonts.notoSans(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: widget.themeColor,
+                                    InkWell(
+                                      onTap: () {
+                                        if (resumeUrl.isNotEmpty) {
+                                          _openResume(resumeUrl);
+                                        }
+                                      },
+                                      child: Text(
+                                        resumeFileName,
+                                        style: GoogleFonts.notoSans(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: widget.themeColor,
+                                          decoration: TextDecoration.underline,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -724,18 +733,11 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                           children: [
                             if (resumeUrl.isNotEmpty) ...[
                               IconButton(
-                                icon: const Icon(Icons.copy_all_rounded),
+                                icon: const Icon(Icons.open_in_new_rounded),
                                 color: widget.themeColor,
-                                tooltip: 'Copy Resume Link',
+                                tooltip: 'View Resume',
                                 onPressed: () {
-                                  Clipboard.setData(ClipboardData(text: resumeUrl));
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Resume URL copied to clipboard!'),
-                                      behavior: SnackBarBehavior.floating,
-                                      duration: Duration(seconds: 2),
-                                    ),
-                                  );
+                                  _openResume(resumeUrl);
                                 },
                               ),
                               const SizedBox(width: 8),
@@ -1842,13 +1844,7 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
             if (isLink && resumeUrl != null)
               InkWell(
                 onTap: () {
-                  Clipboard.setData(ClipboardData(text: resumeUrl));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Resume URL copied to clipboard!'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                  _openResume(resumeUrl);
                 },
                 child: Text(
                   value,
@@ -2244,5 +2240,36 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
         );
       },
     );
+  }
+
+  void _openResume(String resumeUrl) {
+    if (resumeUrl.contains('demo-storage.example.com') || resumeUrl.contains('example.com')) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              const SizedBox(width: 8),
+              Text('Resume Not Available', style: GoogleFonts.notoSans(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Text(
+            'This resume was submitted when Firebase Storage was unavailable or in demo mode, '
+            'so the file was not uploaded to the server.\n\n'
+            'For new applications, please verify that Firebase Storage is enabled in your Firebase Console.',
+            style: GoogleFonts.notoSans(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK', style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, color: widget.themeColor)),
+            ),
+          ],
+        ),
+      );
+    } else {
+      js.context.callMethod('open', [resumeUrl]);
+    }
   }
 }

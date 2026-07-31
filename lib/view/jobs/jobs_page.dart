@@ -13,7 +13,8 @@ import 'package:flutter/foundation.dart';
 
 class JobsPage extends StatefulWidget {
   final String? initialJobId;
-  const JobsPage({super.key, this.initialJobId});
+  final String? initialSearchQuery;
+  const JobsPage({super.key, this.initialJobId, this.initialSearchQuery});
 
   @override
   State<JobsPage> createState() => _JobsPageState();
@@ -50,6 +51,10 @@ class _JobsPageState extends State<JobsPage> {
     super.initState();
     _pageScrollController = ScrollController();
     _searchController = TextEditingController();
+    if (widget.initialSearchQuery != null) {
+      _searchQuery = widget.initialSearchQuery!;
+      _searchController.text = widget.initialSearchQuery!;
+    }
     _jobsStream = FirebaseService.instance.getJobsStream();
     _pageFocusNode = FocusNode();
 

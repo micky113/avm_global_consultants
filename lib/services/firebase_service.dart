@@ -215,9 +215,10 @@ class FirebaseService {
             SettableMetadata(contentType: 'application/pdf'),
           );
           
-          final snapshot = await uploadTask.timeout(const Duration(seconds: 5));
+          final snapshot = await uploadTask.timeout(const Duration(seconds: 30));
           resumeUrl = await snapshot.ref.getDownloadURL();
-        } catch (_) {
+        } catch (e) {
+          print('Firebase Storage resume upload failed: $e');
           resumeUrl = 'https://demo-storage.example.com/resumes/$resumeFileName';
         }
       } else {
@@ -289,9 +290,10 @@ class FirebaseService {
             ),
           );
           
-          final snapshot = await uploadTask.timeout(const Duration(seconds: 5));
+          final snapshot = await uploadTask.timeout(const Duration(seconds: 30));
           resumeUrl = await snapshot.ref.getDownloadURL();
-        } catch (_) {
+        } catch (e) {
+          print('Firebase Storage contact resume upload failed: $e');
           resumeUrl = 'https://demo-storage.example.com/contact_resumes/$resumeFileName';
         }
       } else {
@@ -400,9 +402,10 @@ class FirebaseService {
             SettableMetadata(contentType: 'image/jpeg'),
           );
           
-          final snapshot = await uploadTask.timeout(const Duration(seconds: 5));
+          final snapshot = await uploadTask.timeout(const Duration(seconds: 30));
           imageUrl = await snapshot.ref.getDownloadURL();
         } catch (storageError) {
+          print('Firebase Storage testimonial image upload failed: $storageError');
           final base64Str = base64Encode(imageBytes);
           final extension = imageName.split('.').last.toLowerCase();
           final mimeType = (extension == 'png') ? 'image/png' : 'image/jpeg';
@@ -546,9 +549,10 @@ class FirebaseService {
             SettableMetadata(contentType: 'image/jpeg'),
           );
           
-          final snapshot = await uploadTask.timeout(const Duration(seconds: 5));
+          final snapshot = await uploadTask.timeout(const Duration(seconds: 30));
           imageUrl = await snapshot.ref.getDownloadURL();
         } catch (storageError) {
+          print('Firebase Storage testimonial image update failed: $storageError');
           final base64Str = base64Encode(imageBytes);
           final extension = imageName.split('.').last.toLowerCase();
           final mimeType = (extension == 'png') ? 'image/png' : 'image/jpeg';
@@ -809,9 +813,10 @@ class FirebaseService {
             SettableMetadata(contentType: 'application/pdf'),
           );
           
-          final snapshot = await uploadTask.timeout(const Duration(seconds: 5));
+          final snapshot = await uploadTask.timeout(const Duration(seconds: 30));
           resumeUrl = await snapshot.ref.getDownloadURL();
-        } catch (_) {
+        } catch (e) {
+          print('Firebase Storage application resume upload failed: $e');
           resumeUrl = 'https://demo-storage.example.com/job_applications/$resumeFileName';
         }
       } else {

@@ -34,10 +34,14 @@ class MyAppRouter {
         path: '/jobs',
         pageBuilder: (context, state) {
           final jobId = state.uri.queryParameters['id'];
+          final query = state.uri.queryParameters['query'];
           return MaterialPage(
             name: MyAppRouteConstants.jobsRouteName,
             key: state.pageKey,
-            child: JobsPage(initialJobId: jobId),
+            child: JobsPage(
+              initialJobId: jobId,
+              initialSearchQuery: query,
+            ),
           );
         },
       ),

@@ -44,6 +44,28 @@ class _MyHomePageState extends State<MyHomePage> {
   late final ScrollController _desktopScrollController;
   late final FocusNode _desktopFocusNode;
 
+  final _skillsController = TextEditingController();
+  final _locationController = TextEditingController();
+
+  void _performSearch({String? query, String? location}) {
+    String finalQuery = '';
+    if (query != null && query.trim().isNotEmpty) {
+      finalQuery = query.trim();
+    }
+    if (location != null && location.trim().isNotEmpty) {
+      if (finalQuery.isNotEmpty) {
+        finalQuery += ' ' + location.trim();
+      } else {
+        finalQuery = location.trim();
+      }
+    }
+    if (finalQuery.isNotEmpty) {
+      context.go('/jobs?query=${Uri.encodeComponent(finalQuery)}');
+    } else {
+      context.go('/jobs');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -82,6 +104,8 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() {
     _desktopScrollController.dispose();
     _desktopFocusNode.dispose();
+    _skillsController.dispose();
+    _locationController.dispose();
     super.dispose();
   }
 
@@ -312,96 +336,169 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Column(
                 children: [
                   // 1. Hero Banner
-                  Stack(
-                    children: [
-                      Container(
-                        height: 380,
-                        decoration: const BoxDecoration(
-                          image: DecorationImage(
-                            image: AssetImage('images/background_image.png'),
-                            fit: BoxFit.cover,
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFFF8FAFC),
+                          Color(0xFFEFF6FF),
+                          Color(0xFFF1F5F9),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Find your dream\nglobal career now',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF0A192F),
+                            height: 1.2,
                           ),
                         ),
-                      ),
-                      Container(
-                        height: 380,
-                        color: const Color(0xFF0A192F).withValues(alpha: 0.65),
-                      ),
-                      Positioned(
-                        left: 20,
-                        right: 20,
-                        top: 40,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        const SizedBox(height: 10),
+                        Text(
+                          'Government-approved portal for careers in Europe, Canada, Gulf & Australia.',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        // Mobile Search Box
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              TextField(
+                                controller: _skillsController,
+                                decoration: InputDecoration(
+                                  prefixIcon: const Icon(Icons.search, color: Colors.blueAccent),
+                                  hintText: 'Skills, designations, companies',
+                                  hintStyle: GoogleFonts.notoSans(color: Colors.black38, fontSize: 14),
+                                  border: const OutlineInputBorder(
+                                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                                    borderSide: BorderSide(color: Colors.black12),
+                                  ),
+                                  focusedBorder: const OutlineInputBorder(
+                                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                                    borderSide: BorderSide(color: Color.fromARGB(255, 20, 110, 184)),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                                style: GoogleFonts.notoSans(fontSize: 14, color: Colors.black87),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _locationController,
+                                decoration: InputDecoration(
+                                  prefixIcon: const Icon(Icons.location_on_outlined, color: Colors.redAccent),
+                                  hintText: 'Location or Country',
+                                  hintStyle: GoogleFonts.notoSans(color: Colors.black38, fontSize: 14),
+                                  border: const OutlineInputBorder(
+                                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                                    borderSide: BorderSide(color: Colors.black12),
+                                  ),
+                                  focusedBorder: const OutlineInputBorder(
+                                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                                    borderSide: BorderSide(color: Color.fromARGB(255, 20, 110, 184)),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                                style: GoogleFonts.notoSans(fontSize: 14, color: Colors.black87),
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    _performSearch(
+                                      query: _skillsController.text,
+                                      location: _locationController.text,
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color.fromARGB(255, 20, 110, 184),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: Text(
+                                    'Search Jobs',
+                                    style: GoogleFonts.notoSans(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Trending searches
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(
-                              'Connecting Indian\nTalent with\nGlobal Opportunities',
+                              'Trending:',
                               style: GoogleFonts.notoSans(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                height: 1.2,
+                                fontSize: 13,
+                                color: Colors.black45,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 15),
-                            Text(
-                              'Your trusted government-approved gateway to careers in Europe, Middle East, Canada, and Australia.',
-                              style: GoogleFonts.notoSans(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 30),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.transparent,
-                                border: Border.all(color: Colors.white, width: 2),
-                                borderRadius: const BorderRadius.all(Radius.circular(21)),
-                              ),
-                              height: 50,
-                              width: double.infinity,
-                              child: InkWell(
-                                onTap: () => _showAdminDashboard(context),
-                                child: Center(
+                            ...['Remote', 'IT', 'Nursing', 'Engineering'].map((tag) {
+                              return InkWell(
+                                onTap: () {
+                                  _skillsController.text = tag;
+                                  _performSearch(query: tag);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.black12),
+                                  ),
                                   child: Text(
-                                    'FOR BUSINESSES',
+                                    tag,
                                     style: GoogleFonts.notoSans(
-                                      fontSize: 15,
+                                      fontSize: 12,
+                                      color: const Color.fromARGB(255, 20, 110, 184),
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.white,
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.transparent,
-                                border: Border.all(color: Colors.white, width: 2),
-                                borderRadius: const BorderRadius.all(Radius.circular(21)),
-                              ),
-                              height: 50,
-                              width: double.infinity,
-                              child: InkWell(
-                                onTap: () => context.go('/jobs'),
-                                child: Center(
-                                  child: Text(
-                                    'FOR JOB SEEKERS',
-                                    style: GoogleFonts.notoSans(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
+                              );
+                            }).toList(),
                           ],
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
 
                   // 2. SVC Intro Section
@@ -1083,159 +1180,165 @@ class _MyHomePageState extends State<MyHomePage> {
                 controller: _desktopScrollController,
                 child: Column(
               children: [
-                Stack(
-                  children: [
-                    Container(
-                      height: 600,
-                      // Use BoxDecoration to fill the entire container with the image
-                      decoration: const BoxDecoration(
-                        image: DecorationImage(
-                          image: AssetImage(
-                            'images/background_image.png',
-                          ), // Replace with your image path
-                          fit:
-                              BoxFit
-                                  .cover, // Ensures the image covers the entire screen, cropping if necessary
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 40),
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFFF8FAFC),
+                        Color(0xFFEFF6FF),
+                        Color(0xFFF1F5F9),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Find your dream global career now',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.notoSans(
+                          fontSize: 44,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF0A192F),
+                          letterSpacing: -0.5,
                         ),
                       ),
-
-                      // Set the container to fill the entire screen space
-                    ),
-                    Container(
-                      height: 600,
-                      color: const Color(0xFF0A192F).withValues(alpha: 0.65),
-                    ),
-                    Positioned(
-                      left: 70,
-                      top: 50,
-                      child: Text(
-                        textAlign: TextAlign.left,
-                        'Connecting Indian \nTalent with\nGlobal Opportunities',
+                      const SizedBox(height: 12),
+                      Text(
+                        '5,000+ open positions across Europe, Middle East, Canada, and Australia.',
+                        textAlign: TextAlign.center,
                         style: GoogleFonts.notoSans(
-                          fontSize: 47,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      left: 70,
-                      top: 290,
-                      child: Text(
-                        textAlign: TextAlign.left,
-                        'Your trusted government-approved gateway to careers in Europe, Middle East, Canada, and Australia.',
-                        style: GoogleFonts.notoSans(
-                          fontSize: 17,
+                          fontSize: 18,
                           fontWeight: FontWeight.w500,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      // Search Card
+                      Container(
+                        width: 950,
+                        height: 70,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
                           color: Colors.white,
+                          borderRadius: BorderRadius.circular(35),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 30,
+                              offset: const Offset(0, 15),
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
-                    Positioned(
-                      left: 70,
-                      top: 400,
-                      child: Container(
-                        // color: Colors.black,
-                        decoration: BoxDecoration(
-                          color:
-                              _isHovering == true
-                                  ? Colors.white
-                                  : Colors.transparent,
-                          border: Border.all(color: Colors.white, width: 2),
-                          borderRadius: BorderRadius.all(Radius.circular(21)),
-                        ),
-                        height: 60,
-                        width: 200,
-                        child: InkWell(
-                          onHover: (value) {
-                            setState(() {
-                              _isHovering = value;
-                            });
-                          },
-
-                          hoverColor: Colors.transparent,
-                          onTap: () => context.go('/jobs'),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            // mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'EXPLORE JOBS',
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 8),
+                            const Icon(Icons.search, color: Colors.blueAccent, size: 24),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextField(
+                                controller: _skillsController,
+                                decoration: InputDecoration(
+                                  hintText: 'Enter skills / designations / companies',
+                                  hintStyle: GoogleFonts.notoSans(color: Colors.black38, fontSize: 15),
+                                  border: InputBorder.none,
+                                ),
+                                style: GoogleFonts.notoSans(fontSize: 15, color: Colors.black87),
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              height: 30,
+                              color: Colors.black12,
+                              margin: const EdgeInsets.symmetric(horizontal: 16),
+                            ),
+                            const Icon(Icons.location_on_outlined, color: Colors.redAccent, size: 24),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextField(
+                                controller: _locationController,
+                                decoration: InputDecoration(
+                                  hintText: 'Enter location / country',
+                                  hintStyle: GoogleFonts.notoSans(color: Colors.black38, fontSize: 15),
+                                  border: InputBorder.none,
+                                ),
+                                style: GoogleFonts.notoSans(fontSize: 15, color: Colors.black87),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: () {
+                                _performSearch(
+                                  query: _skillsController.text,
+                                  location: _locationController.text,
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color.fromARGB(255, 20, 110, 184),
+                                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(26),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: Text(
+                                'Search Jobs',
                                 style: GoogleFonts.notoSans(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
-                                  color:
-                                      _isHovering == true
-                                          ? Color.fromARGB(255, 20, 110, 184)
-                                          : Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
                                 ),
                               ),
-                              Icon(
-                                Icons.arrow_forward_rounded,
-                                color:
-                                    _isHovering == true
-                                        ? Color.fromARGB(255, 20, 110, 184)
-                                        : Colors.white,
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    Positioned(
-                      left: 300,
-                      top: 400,
-                      child: Container(
-                        // color: Colors.black,
-                        decoration: BoxDecoration(
-                          color:
-                              _isHovering2 == true
-                                  ? Colors.white
-                                  : Colors.transparent,
-                          border: Border.all(color: Colors.white, width: 2),
-                          borderRadius: BorderRadius.all(Radius.circular(21)),
-                        ),
-                        height: 60,
-                        width: 200,
-                        child: InkWell(
-                          onHover: (secondvalue) {
-                            setState(() {
-                              _isHovering2 = secondvalue;
-                            });
-                          },
-
-                          hoverColor: Colors.transparent,
-                          onTap: () => _showAdminDashboard(context),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'FOR EMPLOYERS',
-                                style: GoogleFonts.notoSans(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
-                                  color:
-                                      _isHovering2 == true
-                                          ? Color.fromARGB(255, 20, 110, 184)
-                                          : Colors.white,
+                      const SizedBox(height: 24),
+                      // Popular search tags
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Trending Searches: ',
+                            style: GoogleFonts.notoSans(
+                              fontSize: 14,
+                              color: Colors.black45,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          ...['Remote', 'Information Technology', 'Healthcare', 'Nursing', 'Engineering'].map((tag) {
+                            return Padding(
+                              padding: const EdgeInsets.only(left: 8.0),
+                              child: ActionChip(
+                                label: Text(
+                                  tag,
+                                  style: GoogleFonts.notoSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color.fromARGB(255, 20, 110, 184),
+                                  ),
                                 ),
+                                backgroundColor: Colors.white,
+                                elevation: 0,
+                                side: const BorderSide(color: Colors.black12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                onPressed: () {
+                                  _skillsController.text = tag;
+                                  _performSearch(query: tag);
+                                },
                               ),
-                              Icon(
-                                Icons.arrow_forward_rounded,
-                                color:
-                                    _isHovering2 == true
-                                        ? Color.fromARGB(255, 20, 110, 184)
-                                        : Colors.white,
-                              ),
-                            ],
-                          ),
-                        ),
+                            );
+                          }).toList(),
+                        ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
 
                 SizedBox(
