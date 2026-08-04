@@ -370,6 +370,12 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                         icon: Icons.reviews_rounded,
                         isLargeScreen: isLargeScreen,
                       ),
+                      _buildSidebarItem(
+                        id: 'searches',
+                        title: 'User Searches',
+                        icon: Icons.search_rounded,
+                        isLargeScreen: isLargeScreen,
+                      ),
                     ],
                   ),
                 ),
@@ -384,7 +390,9 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                           ? _buildJobsPanel()
                           : _activeTab == 'job_applications'
                               ? _buildJobApplicationsPanel()
-                              : _buildTestimonialsPanel(),
+                              : _activeTab == 'testimonials'
+                                  ? _buildTestimonialsPanel()
+                                  : _buildRecentSearchesPanel(),
                 ),
               ),
             ],
@@ -412,7 +420,9 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                       ? 1
                       : _activeTab == 'job_applications'
                           ? 2
-                          : 3,
+                          : _activeTab == 'testimonials'
+                              ? 3
+                              : 4,
               onTap: (index) {
                 setState(() {
                   _activeTab = index == 0
@@ -421,7 +431,9 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                           ? 'jobs'
                           : index == 2
                               ? 'job_applications'
-                              : 'testimonials';
+                              : index == 3
+                                  ? 'testimonials'
+                                  : 'searches';
                 });
               },
               selectedItemColor: widget.themeColor,
@@ -447,6 +459,10 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                 BottomNavigationBarItem(
                   icon: Icon(Icons.reviews_rounded),
                   label: 'Reviews',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.search_rounded),
+                  label: 'Searches',
                 ),
               ],
             ),
@@ -2239,6 +2255,175 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
           },
         );
       },
+    );
+  }
+
+  // Tab 5: Recent Searches Management
+  Widget _buildRecentSearchesPanel() {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: FirebaseService.instance.getAdminRecentSearchesStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error loading searches: ${snapshot.error}'));
+        }
+        final searches = snapshot.data ?? [];
+        if (searches.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.search_off_rounded, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'No search records found',
+                  style: GoogleFonts.notoSans(fontSize: 16, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final isMobilePanel = MediaQuery.of(context).size.width < 600;
+
+        return ListView.builder(
+          padding: EdgeInsets.all(isMobilePanel ? 12 : 24),
+          itemCount: searches.length,
+          itemBuilder: (context, index) {
+            final item = searches[index];
+            final query = item['query'] ?? '';
+            final count = item['count'] ?? 1;
+            final docId = item['id'] ?? '';
+
+            // Format Timestamp
+            String formattedDate = '';
+            if (item['timestamp'] != null) {
+              try {
+                final date = item['timestamp'] is DateTime
+                    ? item['timestamp']
+                    : (item['timestamp'] as dynamic).toDate();
+                formattedDate = '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+              } catch (_) {}
+            }
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Colors.grey[200]!),
+              ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: widget.themeColor.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.search_rounded, color: widget.themeColor, size: 24),
+                ),
+                title: Text(
+                  query,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          'Searches: $count',
+                          style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (item['success'] as bool? ?? false) ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            (item['success'] as bool? ?? false) ? 'Found Jobs' : 'No Results',
+                            style: GoogleFonts.notoSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: (item['success'] as bool? ?? false) ? Colors.green : Colors.orange,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (formattedDate.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Last Searched: $formattedDate',
+                        style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black38),
+                      ),
+                    ],
+                  ],
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  color: Colors.redAccent,
+                  tooltip: 'Delete Log',
+                  onPressed: () => _confirmDeleteRecentSearch(docId),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteRecentSearch(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Search Log?'),
+        content: const Text('Are you sure you want to delete this user search log?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await FirebaseService.instance.deleteRecentSearch(id);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Search log deleted successfully!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
   }
 

@@ -941,4 +941,126 @@ class FirebaseService {
       rethrow;
     }
   }
+
+  // Log Successful Search
+  Future<void> logSuccessfulSearch(String query) async {
+    final cleanQuery = query.trim();
+    if (cleanQuery.isEmpty) return;
+    final lowerQuery = cleanQuery.toLowerCase();
+
+    if (isFirebaseInitialized) {
+      try {
+        final docRef = FirebaseFirestore.instance.collection('recent_searches').doc(lowerQuery);
+        final docSnapshot = await docRef.get();
+        final exists = docSnapshot.exists;
+        final wasSuccess = exists ? (docSnapshot.data()?['success'] as bool? ?? false) : false;
+
+        await docRef.set({
+          'query': cleanQuery,
+          'timestamp': FieldValue.serverTimestamp(),
+          'count': FieldValue.increment(1),
+          'success': wasSuccess,
+        }, SetOptions(merge: true));
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error logging search: $e');
+        }
+      }
+    }
+  }
+
+  // Mark Search Successful
+  Future<void> markSearchSuccessful(String query) async {
+    final cleanQuery = query.trim();
+    if (cleanQuery.isEmpty) return;
+    final lowerQuery = cleanQuery.toLowerCase();
+
+    if (isFirebaseInitialized) {
+      try {
+        final docRef = FirebaseFirestore.instance.collection('recent_searches').doc(lowerQuery);
+        await docRef.set({
+          'success': true,
+        }, SetOptions(merge: true));
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error marking search successful: $e');
+        }
+      }
+    }
+  }
+
+  // Get Recent Searches Stream
+  Stream<List<String>> getRecentSearchesStream() async* {
+    if (isFirebaseInitialized) {
+      try {
+        final snapshots = FirebaseFirestore.instance
+            .collection('recent_searches')
+            .orderBy('timestamp', descending: true)
+            .limit(30)
+            .snapshots();
+
+        await for (final snapshot in snapshots) {
+          final queries = snapshot.docs
+              .where((doc) => doc.data()['success'] as bool? ?? false)
+              .map((doc) => doc.data()['query'] as String? ?? '')
+              .where((q) => q.isNotEmpty)
+              .take(5)
+              .toList();
+          yield queries;
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error getting recent searches: $e');
+        }
+        yield [];
+      }
+    } else {
+      yield [];
+    }
+  }
+
+  // Get Admin Recent Searches Stream
+  Stream<List<Map<String, dynamic>>> getAdminRecentSearchesStream() async* {
+    if (isFirebaseInitialized) {
+      try {
+        final snapshots = FirebaseFirestore.instance
+            .collection('recent_searches')
+            .orderBy('timestamp', descending: true)
+            .snapshots();
+
+        await for (final snapshot in snapshots) {
+          final list = snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          }).toList();
+          yield list;
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error getting admin recent searches: $e');
+        }
+        yield [];
+      }
+    } else {
+      yield [];
+    }
+  }
+
+  // Delete Recent Search
+  Future<void> deleteRecentSearch(String id) async {
+    if (isFirebaseInitialized) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('recent_searches')
+            .doc(id)
+            .delete();
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error deleting recent search: $e');
+        }
+        rethrow;
+      }
+    }
+  }
 }

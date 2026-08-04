@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:avm_global_web/models/job.dart';
 import 'package:avm_global_web/services/firebase_service.dart';
 import 'package:avm_global_web/view/admin/admin_dashboard.dart';
 import 'package:avm_global_web/view/home_page/widgets/animated_card/animated_card.dart';
@@ -47,7 +48,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final _skillsController = TextEditingController();
   final _locationController = TextEditingController();
 
-  void _performSearch({String? query, String? location}) {
+  void _performSearch({String? query, String? location, bool logSearch = false}) {
     String finalQuery = '';
     if (query != null && query.trim().isNotEmpty) {
       finalQuery = query.trim();
@@ -60,9 +61,126 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     }
     if (finalQuery.isNotEmpty) {
+      if (logSearch) {
+        FirebaseService.instance.logSuccessfulSearch(finalQuery);
+      }
       context.go('/jobs?query=${Uri.encodeComponent(finalQuery)}');
     } else {
       context.go('/jobs');
+    }
+  }
+
+  Widget _buildTrendingSearches(bool isMobile) {
+    return StreamBuilder<List<String>>(
+      stream: FirebaseService.instance.getRecentSearchesStream(),
+      builder: (context, searchSnapshot) {
+        if (searchSnapshot.hasData && searchSnapshot.data!.isNotEmpty) {
+          final tags = searchSnapshot.data!;
+          return _buildTagsLayout(tags, isMobile, isSearchTags: true);
+        }
+
+        // If no searches available, show recent jobs
+        return StreamBuilder<List<Job>>(
+          stream: FirebaseService.instance.getJobsStream(),
+          builder: (context, jobsSnapshot) {
+            if (jobsSnapshot.hasData && jobsSnapshot.data!.isNotEmpty) {
+              // Take the first 5 jobs and extract their unique titles
+              final recentJobs = jobsSnapshot.data!.take(5);
+              final tags = recentJobs.map((j) => j.title).toSet().toList();
+              return _buildTagsLayout(tags, isMobile, isSearchTags: false);
+            }
+
+            // Fallback to static list if absolutely nothing is loaded
+            final fallbackTags = isMobile
+                ? ['Remote', 'IT', 'Nursing', 'Engineering']
+                : ['Remote', 'Information Technology', 'Healthcare', 'Nursing', 'Engineering'];
+            return _buildTagsLayout(fallbackTags, isMobile, isSearchTags: true);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTagsLayout(List<String> tags, bool isMobile, {required bool isSearchTags}) {
+    if (isMobile) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            isSearchTags ? 'Trending:' : 'Recent Jobs:',
+            style: GoogleFonts.notoSans(
+              fontSize: 13,
+              color: Colors.black45,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          ...tags.map((tag) {
+            return InkWell(
+              onTap: () {
+                _skillsController.text = tag;
+                _performSearch(query: tag);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.black12),
+                ),
+                child: Text(
+                  tag,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 12,
+                    color: const Color.fromARGB(255, 20, 110, 184),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ],
+      );
+    } else {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            isSearchTags ? 'Trending Searches: ' : 'Recent Openings: ',
+            style: GoogleFonts.notoSans(
+              fontSize: 14,
+              color: Colors.black45,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          ...tags.map((tag) {
+            return Padding(
+              padding: const EdgeInsets.only(left: 8.0),
+              child: ActionChip(
+                label: Text(
+                  tag,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color.fromARGB(255, 20, 110, 184),
+                  ),
+                ),
+                backgroundColor: Colors.white,
+                elevation: 0,
+                side: const BorderSide(color: Colors.black12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                onPressed: () {
+                  _skillsController.text = tag;
+                  _performSearch(query: tag);
+                },
+              ),
+            );
+          }).toList(),
+        ],
+      );
     }
   }
 
@@ -434,6 +552,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                     _performSearch(
                                       query: _skillsController.text,
                                       location: _locationController.text,
+                                      logSearch: true,
                                     );
                                   },
                                   style: ElevatedButton.styleFrom(
@@ -458,45 +577,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                         const SizedBox(height: 16),
                         // Trending searches
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            Text(
-                              'Trending:',
-                              style: GoogleFonts.notoSans(
-                                fontSize: 13,
-                                color: Colors.black45,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            ...['Remote', 'IT', 'Nursing', 'Engineering'].map((tag) {
-                              return InkWell(
-                                onTap: () {
-                                  _skillsController.text = tag;
-                                  _performSearch(query: tag);
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.black12),
-                                  ),
-                                  child: Text(
-                                    tag,
-                                    style: GoogleFonts.notoSans(
-                                      fontSize: 12,
-                                      color: const Color.fromARGB(255, 20, 110, 184),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ],
-                        ),
+                        _buildTrendingSearches(true),
                       ],
                     ),
                   ),
@@ -1275,6 +1356,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                 _performSearch(
                                   query: _skillsController.text,
                                   location: _locationController.text,
+                                  logSearch: true,
                                 );
                               },
                               style: ElevatedButton.styleFrom(
@@ -1299,44 +1381,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                       const SizedBox(height: 24),
                       // Popular search tags
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Trending Searches: ',
-                            style: GoogleFonts.notoSans(
-                              fontSize: 14,
-                              color: Colors.black45,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          ...['Remote', 'Information Technology', 'Healthcare', 'Nursing', 'Engineering'].map((tag) {
-                            return Padding(
-                              padding: const EdgeInsets.only(left: 8.0),
-                              child: ActionChip(
-                                label: Text(
-                                  tag,
-                                  style: GoogleFonts.notoSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color.fromARGB(255, 20, 110, 184),
-                                  ),
-                                ),
-                                backgroundColor: Colors.white,
-                                elevation: 0,
-                                side: const BorderSide(color: Colors.black12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                onPressed: () {
-                                  _skillsController.text = tag;
-                                  _performSearch(query: tag);
-                                },
-                              ),
-                            );
-                          }).toList(),
-                        ],
-                      ),
+                      _buildTrendingSearches(false),
                     ],
                   ),
                 ),

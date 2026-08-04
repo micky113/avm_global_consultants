@@ -9,7 +9,6 @@ import 'package:avm_global_web/services/firebase_service.dart';
 import 'package:avm_global_web/view/admin/admin_dashboard.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'dart:js' as js;
-import 'package:flutter/foundation.dart';
 
 class JobsPage extends StatefulWidget {
   final String? initialJobId;
@@ -28,8 +27,83 @@ class _JobsPageState extends State<JobsPage> {
   String _selectedType = 'All'; // 'All', 'Full-time', 'Part-time', 'Contract', etc.
   Job? _selectedJob; // Used for split screen detailed view
   bool _hasInitializedSelection = false;
+  String _markedSuccessQuery = '';
 
   final List<String> _jobTypes = ['All', 'Full-time', 'Part-time', 'Contract', 'Remote', 'Hybrid'];
+
+  static const Map<String, List<String>> _countryToCities = {
+    'india': [
+      'bengaluru', 'bangalore',
+      'mumbai', 'bombay',
+      'chennai', 'madras',
+      'kolkata', 'calcutta',
+      'gurugram', 'gurgaon',
+      'pune', 'poona',
+      'kochi', 'cochin',
+      'trivandrum', 'thiruvananthapuram',
+      'vizag', 'visakhapatnam',
+      'baroda', 'vadodara',
+      'mysore', 'mysuru',
+      'calicut', 'kozhikode',
+      'belgaum', 'belagavi',
+      'gulbarga', 'kalaburagi',
+      'hubli', 'hubballi',
+      'mangalore', 'mangaluru',
+      'sholapur', 'solapur',
+      'jullundur', 'jalandhar',
+      'cawnpore', 'kanpur',
+      'panjim', 'panaji',
+      'pondicherry', 'puducherry', 'pondy',
+      'alleppey', 'alappuzha',
+      'quilon', 'kollam',
+      'trichur', 'thrissur',
+      'palghat', 'palakkad',
+      'cannanore', 'kannur',
+      'tellicherry', 'thalassery',
+      'delhi', 'new delhi',
+      'hyderabad', 'secunderabad',
+      'ahmedabad', 'surat', 'jaipur', 'lucknow', 'patna', 'bhopal'
+    ],
+    'germany': ['munich', 'münchen', 'berlin', 'frankfurt', 'hamburg', 'stuttgart', 'dusseldorf', 'düsseldorf', 'cologne', 'köln', 'dresden', 'bonn', 'nuremberg', 'nürnberg', 'leipzig'],
+    'canada': ['toronto', 'vancouver', 'montreal', 'ville-marie', 'ottawa', 'calgary', 'edmonton', 'quebec', 'winnipeg', 'halifax'],
+    'australia': ['sydney', 'melbourne', 'brisbane', 'perth', 'adelaide', 'canberra', 'hobart', 'darwin'],
+    'united kingdom': ['london', 'londinium', 'manchester', 'birmingham', 'glasgow', 'edinburgh', 'liverpool', 'leeds', 'sheffield', 'bristol'],
+    'uk': ['london', 'londinium', 'manchester', 'birmingham', 'glasgow', 'edinburgh', 'liverpool', 'leeds', 'sheffield', 'bristol'],
+    'ireland': ['dublin', 'cork', 'galway', 'limerick', 'waterford'],
+    'poland': ['warsaw', 'warszawa', 'krakow', 'kraków', 'wroclaw', 'wrocław', 'poznan', 'poznań', 'gdansk', 'gdańsk', 'lodz', 'łódź', 'katowice'],
+    'croatia': ['zagreb', 'split', 'rijeka', 'zadar', 'dubrovnik'],
+    'lithuania': ['vilnius', 'kaunas', 'klaipeda', 'klaipėda'],
+    'romania': ['bucharest', 'bucurești', 'cluj', 'cluj-napoca', 'timisoara', 'timișoara', 'iasi', 'iași', 'constanta', 'constanța'],
+    'france': ['paris', 'marseille', 'lyon', 'toulouse', 'nice', 'nantes', 'strasbourg'],
+    'united arab emirates': ['dubai', 'abu dhabi', 'sharjah', 'ajman', 'al ain'],
+    'uae': ['dubai', 'abu dhabi', 'sharjah', 'ajman', 'al ain'],
+    'saudi arabia': ['riyadh', 'jeddah', 'mecca', 'makkah', 'medina', 'madinah', 'dammam', 'khobar', 'al khobar'],
+    'ksa': ['riyadh', 'jeddah', 'mecca', 'makkah', 'medina', 'madinah', 'dammam', 'khobar', 'al khobar'],
+    'qatar': ['doha', 'al rayyan', 'al wakrah'],
+    'oman': ['muscat', 'salalah', 'sohar'],
+    'kuwait': ['kuwait city'],
+    'bahrain': ['manama'],
+    'netherlands': ['amsterdam', 'rotterdam', 'the hague', 'den haag', 'utrecht', 'eindhoven'],
+    'austria': ['vienna', 'wien', 'salzburg', 'graz', 'linz', 'innsbruck'],
+    'switzerland': ['zurich', 'zürich', 'geneva', 'genève', 'basel', 'bern', 'lausanne'],
+    'italy': ['rome', 'roma', 'milan', 'milano', 'naples', 'napoli', 'turin', 'torino', 'palermo', 'genoa', 'genova', 'florence', 'firenze', 'venice', 'venezia'],
+    'spain': ['madrid', 'barcelona', 'valencia', 'seville', 'sevilla', 'zaragoza', 'malaga', 'málaga'],
+    'united states': ['new york', 'los angeles', 'chicago', 'houston', 'phoenix', 'san francisco', 'seattle', 'boston', 'miami', 'dallas'],
+    'us': ['new york', 'los angeles', 'chicago', 'houston', 'phoenix', 'san francisco', 'seattle', 'boston', 'miami', 'dallas'],
+    'usa': ['new york', 'los angeles', 'chicago', 'houston', 'phoenix', 'san francisco', 'seattle', 'boston', 'miami', 'dallas'],
+    'malta': ['valletta', 'sliema', 'st. julian\'s', 'msida', 'gzira', 'birkirkara'],
+    'luxembourg': ['luxembourg city', 'esch-sur-alzette', 'differdange', 'dudelange'],
+    'belgium': ['brussels', 'bruxelles', 'antwerp', 'antwerpen', 'ghent', 'gent', 'charleroi', 'liege', 'liège', 'bruges', 'brugge'],
+    'sweden': ['stockholm', 'gothenburg', 'göteborg', 'malmo', 'malmö', 'uppsala'],
+    'norway': ['oslo', 'christiania', 'kristiania', 'bergen', 'trondheim', 'stavanger'],
+    'finland': ['helsinki', 'helsingfors', 'espoo', 'esbo', 'tampere', 'vantaa', 'vanda'],
+    'denmark': ['copenhagen', 'københavn', 'aarhus', 'århus', 'odense', 'aalborg'],
+    'new zealand': ['auckland', 'wellington', 'christchurch', 'hamilton', 'tauranga'],
+    'nz': ['auckland', 'wellington', 'christchurch', 'hamilton', 'tauranga'],
+    'vietnam': ['ho chi minh city', 'saigon', 'sài gòn', 'hanoi', 'hà nội', 'da nang', 'đà nẵng'],
+    'turkey': ['istanbul', 'constantinople', 'ankara', 'izmir'],
+    'russia': ['st. petersburg', 'leningrad', 'petrograd', 'moscow', 'volgograd', 'stalingrad'],
+  };
 
   late final ScrollController _pageScrollController;
   late final Stream<List<Job>> _jobsStream;
@@ -43,6 +117,36 @@ class _JobsPageState extends State<JobsPage> {
       return '${baseUri.origin}/#/jobs?id=$jobId';
     } else {
       return '${baseUri.origin}/jobs?id=$jobId';
+    }
+  }
+
+  String _getPostedAgoText(DateTime postedAt) {
+    final now = DateTime.now();
+    final difference = now.difference(postedAt);
+
+    if (difference.inDays < 0) {
+      return 'Posted today';
+    }
+
+    if (difference.inDays == 0) {
+      if (difference.inHours > 0) {
+        return 'Posted ${difference.inHours} ${difference.inHours == 1 ? 'hour' : 'hours'} ago';
+      } else if (difference.inMinutes > 0) {
+        return 'Posted ${difference.inMinutes} ${difference.inMinutes == 1 ? 'minute' : 'minutes'} ago';
+      } else {
+        return 'Posted just now';
+      }
+    } else if (difference.inDays == 1) {
+      return 'Posted yesterday';
+    } else if (difference.inDays < 30) {
+      return 'Posted ${difference.inDays} days ago';
+    } else {
+      final months = (difference.inDays / 30).floor();
+      if (months == 1) {
+        return 'Posted 1 month ago';
+      } else {
+        return 'Posted $months months ago';
+      }
     }
   }
 
@@ -205,12 +309,45 @@ class _JobsPageState extends State<JobsPage> {
           
           // Filter jobs
           final filteredJobs = jobs.where((job) {
-            final matchesSearch = job.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                job.company.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                job.location.toLowerCase().contains(_searchQuery.toLowerCase());
+            final queryTerms = _searchQuery
+                .toLowerCase()
+                .split(RegExp(r'\s+'))
+                .where((term) => term.isNotEmpty)
+                .toList();
+
+            bool matchesSearch = true;
+            if (queryTerms.isNotEmpty) {
+              final title = job.title.toLowerCase();
+              final company = job.company.toLowerCase();
+              final location = job.location.toLowerCase();
+
+              for (final term in queryTerms) {
+                bool termMatches = title.contains(term) ||
+                    company.contains(term) ||
+                    location.contains(term);
+
+                // If no direct match, check if the term is a country and the location is a city in that country
+                if (!termMatches && _countryToCities.containsKey(term)) {
+                  final cities = _countryToCities[term]!;
+                  termMatches = cities.any((city) => location.contains(city));
+                }
+
+                if (!termMatches) {
+                  matchesSearch = false;
+                  break;
+                }
+              }
+            }
+
             final matchesType = _selectedType == 'All' || job.type == _selectedType;
             return matchesSearch && matchesType;
           }).toList();
+
+          // Mark search query as successful in Firestore if it contains elements and returns jobs
+          if (_searchQuery.trim().isNotEmpty && filteredJobs.isNotEmpty && _searchQuery != _markedSuccessQuery) {
+            _markedSuccessQuery = _searchQuery;
+            FirebaseService.instance.markSearchSuccessful(_searchQuery);
+          }
 
           // Auto-select first job if on desktop and none selected
           if (isDesktop && _selectedJob == null && filteredJobs.isNotEmpty) {
@@ -508,20 +645,43 @@ class _JobsPageState extends State<JobsPage> {
                 ],
               ),
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Icon(Icons.location_on_outlined, size: 16, color: Colors.grey[400]),
-                  const SizedBox(width: 4),
-                  Text(
-                    job.location,
-                    style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.location_on_outlined, size: 16, color: Colors.grey[400]),
+                      const SizedBox(width: 4),
+                      Text(
+                        job.location,
+                        style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Icon(Icons.monetization_on_outlined, size: 16, color: Colors.grey[400]),
-                  const SizedBox(width: 4),
-                  Text(
-                    job.salaryRange,
-                    style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.monetization_on_outlined, size: 16, color: Colors.grey[400]),
+                      const SizedBox(width: 4),
+                      Text(
+                        job.salaryRange,
+                        style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.calendar_today_outlined, size: 16, color: Colors.grey[400]),
+                      const SizedBox(width: 4),
+                      Text(
+                        _getPostedAgoText(job.postedAt),
+                        style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -663,6 +823,7 @@ class _JobsPageState extends State<JobsPage> {
                       _buildDetailBadge(Icons.location_on_rounded, job.location),
                       _buildDetailBadge(Icons.work_rounded, job.type),
                       _buildDetailBadge(Icons.monetization_on_rounded, job.salaryRange),
+                      _buildDetailBadge(Icons.calendar_today_rounded, _getPostedAgoText(job.postedAt)),
                     ],
                   ),
                 ],
@@ -819,6 +980,8 @@ class _JobsPageState extends State<JobsPage> {
                       _buildDetailBadge(Icons.work_rounded, job.type),
                       const SizedBox(height: 8),
                       _buildDetailBadge(Icons.monetization_on_rounded, job.salaryRange),
+                      const SizedBox(height: 8),
+                      _buildDetailBadge(Icons.calendar_today_rounded, _getPostedAgoText(job.postedAt)),
                       const Divider(height: 32),
                       Text(
                         'Job Description',
