@@ -13,7 +13,6 @@ import 'dart:js' as js;
 import 'package:flutter/foundation.dart';
 
 import 'package:avm_global_web/view/home_page/widgets/animated_underline_menu_item/animated_underline_menu_item.dart';
-import 'package:avm_global_web/view/home_page/widgets/featured_card/featured_card.dart';
 import 'package:avm_global_web/view/home_page/widgets/hover_clickable%20button/hover_clickable_button.dart';
 import 'package:avm_global_web/view/home_page/widgets/hover_dropdown_button/hover_dropdown_button.dart';
 import 'package:avm_global_web/view/home_page/widgets/hover_text/hover_text.dart';
@@ -49,56 +48,732 @@ class _MyHomePageState extends State<MyHomePage> {
   final _locationController = TextEditingController();
 
   void _performSearch({String? query, String? location, bool logSearch = false}) {
-    String finalQuery = '';
-    if (query != null && query.trim().isNotEmpty) {
-      finalQuery = query.trim();
-    }
-    if (location != null && location.trim().isNotEmpty) {
-      if (finalQuery.isNotEmpty) {
-        finalQuery += ' ' + location.trim();
-      } else {
-        finalQuery = location.trim();
-      }
-    }
-    if (finalQuery.isNotEmpty) {
+    final cleanQuery = query?.trim() ?? '';
+    final cleanLocation = location?.trim() ?? '';
+
+    if (cleanQuery.isNotEmpty || cleanLocation.isNotEmpty) {
       if (logSearch) {
-        FirebaseService.instance.logSuccessfulSearch(finalQuery);
+        String finalLogQuery = cleanQuery;
+        if (cleanLocation.isNotEmpty) {
+          if (finalLogQuery.isNotEmpty) {
+            finalLogQuery += ' ' + cleanLocation;
+          } else {
+            finalLogQuery = cleanLocation;
+          }
+        }
+        FirebaseService.instance.logSuccessfulSearch(finalLogQuery);
       }
-      context.go('/jobs?query=${Uri.encodeComponent(finalQuery)}');
+
+      final Map<String, String> queryParams = {};
+      if (cleanQuery.isNotEmpty) {
+        queryParams['query'] = cleanQuery;
+      }
+      if (cleanLocation.isNotEmpty) {
+        queryParams['location'] = cleanLocation;
+      }
+
+      final uri = Uri(path: '/jobs', queryParameters: queryParams);
+      context.go(uri.toString());
     } else {
       context.go('/jobs');
     }
   }
 
   Widget _buildTrendingSearches(bool isMobile) {
-    return StreamBuilder<List<String>>(
-      stream: FirebaseService.instance.getRecentSearchesStream(),
-      builder: (context, searchSnapshot) {
-        if (searchSnapshot.hasData && searchSnapshot.data!.isNotEmpty) {
-          final tags = searchSnapshot.data!;
-          return _buildTagsLayout(tags, isMobile, isSearchTags: true);
-        }
-
-        // If no searches available, show recent jobs
-        return StreamBuilder<List<Job>>(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        StreamBuilder<List<String>>(
+          stream: FirebaseService.instance.getRecentSearchesStream(),
+          builder: (context, searchSnapshot) {
+            final tags = (searchSnapshot.hasData && searchSnapshot.data!.isNotEmpty)
+                ? searchSnapshot.data!
+                : (isMobile
+                    ? ['Remote', 'IT', 'Nursing', 'Engineering']
+                    : ['Remote', 'Information Technology', 'Healthcare', 'Nursing', 'Engineering']);
+            return _buildTagsLayout(tags, isMobile, isSearchTags: true);
+          },
+        ),
+        const SizedBox(height: 20),
+        StreamBuilder<List<Job>>(
           stream: FirebaseService.instance.getJobsStream(),
           builder: (context, jobsSnapshot) {
             if (jobsSnapshot.hasData && jobsSnapshot.data!.isNotEmpty) {
-              // Take the first 5 jobs and extract their unique titles
-              final recentJobs = jobsSnapshot.data!.take(5);
-              final tags = recentJobs.map((j) => j.title).toSet().toList();
-              return _buildTagsLayout(tags, isMobile, isSearchTags: false);
+              final recentJobs = jobsSnapshot.data!.take(3);
+              return Container(
+                margin: const EdgeInsets.only(top: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Recent Job Openings',
+                      style: GoogleFonts.notoSans(
+                        fontSize: 18,
+                        color: const Color(0xFF0A192F),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      alignment: WrapAlignment.center,
+                      children: recentJobs.map((job) {
+                        return _buildJobCard(context, job, isMobile);
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildJobCard(BuildContext context, Job job, bool isMobile) {
+    const themeColor = Color(0xFF146EB8);
+    const darkBlue = Color(0xFF0A192F);
+    
+    return Container(
+      width: isMobile ? double.infinity : 340,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () => _showJobDetailsDialog(context, job),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          job.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.notoSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: darkBlue,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          job.company,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.notoSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: themeColor.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      job.type,
+                      style: GoogleFonts.notoSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: themeColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Icon(Icons.location_on_outlined, size: 16, color: Colors.grey[400]),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      job.location,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.monetization_on_outlined, size: 16, color: Colors.grey[400]),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      job.salaryRange,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey[400]),
+                  const SizedBox(width: 6),
+                  Text(
+                    _getPostedAgoText(job.postedAt),
+                    style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black38),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showJobDetailsDialog(BuildContext context, Job job) {
+    const themeColor = Color(0xFF146EB8);
+    const darkBlue = Color(0xFF0A192F);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 550,
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              job.title,
+                              style: GoogleFonts.notoSans(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: darkBlue,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              job.company,
+                              style: GoogleFonts.notoSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: themeColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 24),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 8,
+                    children: [
+                      _buildDetailBadge(Icons.location_on_rounded, job.location),
+                      _buildDetailBadge(Icons.work_rounded, job.type),
+                      _buildDetailBadge(Icons.monetization_on_rounded, job.salaryRange),
+                      _buildDetailBadge(Icons.calendar_today_rounded, _getPostedAgoText(job.postedAt)),
+                    ],
+                  ),
+                  const Divider(height: 24),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Job Description',
+                            style: GoogleFonts.notoSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: darkBlue,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            job.description,
+                            style: GoogleFonts.notoSans(
+                              fontSize: 13,
+                              color: Colors.black87,
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Requirements',
+                            style: GoogleFonts.notoSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: darkBlue,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            job.requirements,
+                            style: GoogleFonts.notoSans(
+                              fontSize: 13,
+                              color: Colors.black87,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            final shareUrl = _getShareUrl(job.id);
+                            Clipboard.setData(ClipboardData(text: shareUrl));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Job link copied to clipboard!'),
+                                behavior: SnackBarBehavior.floating,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: themeColor,
+                            side: const BorderSide(color: themeColor),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.share_rounded, size: 18),
+                          label: Text(
+                            'Share',
+                            style: GoogleFonts.notoSans(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _showApplyDialog(context, job);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: themeColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            'Apply Now',
+                            style: GoogleFonts.notoSans(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailBadge(IconData icon, String text) {
+    const themeColor = Color(0xFF146EB8);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: themeColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: themeColor),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: GoogleFonts.notoSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showApplyDialog(BuildContext context, Job job) {
+    const themeColor = Color(0xFF146EB8);
+    const darkBlue = Color(0xFF0A192F);
+
+    final formKey = GlobalKey<FormState>();
+    final nameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    
+    Uint8List? resumeBytes;
+    String? resumeName;
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> pickResume() async {
+              try {
+                final result = await FilePicker.platform.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: ['pdf', 'doc', 'docx'],
+                  allowMultiple: false,
+                );
+                if (result != null && result.files.single.bytes != null) {
+                  setDialogState(() {
+                    resumeBytes = result.files.single.bytes;
+                    resumeName = result.files.single.name;
+                  });
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error picking resume: $e')),
+                );
+              }
             }
 
-            // Fallback to static list if absolutely nothing is loaded
-            final fallbackTags = isMobile
-                ? ['Remote', 'IT', 'Nursing', 'Engineering']
-                : ['Remote', 'Information Technology', 'Healthcare', 'Nursing', 'Engineering'];
-            return _buildTagsLayout(fallbackTags, isMobile, isSearchTags: true);
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Apply for Job',
+                    style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, color: darkBlue),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${job.title} at ${job.company}',
+                    style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: MediaQuery.of(context).size.width < 500
+                    ? MediaQuery.of(context).size.width * 0.9
+                    : 450,
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Full Name',
+                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: nameCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'Enter your name',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty ? 'Please enter your name' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Email Address',
+                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: emailCtrl,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            hintText: 'Enter your email id',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          ),
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Please enter your email';
+                            }
+                            final emailReg = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                            if (!emailReg.hasMatch(val.trim())) {
+                              return 'Please enter a valid email address';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Contact Number',
+                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: phoneCtrl,
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(
+                            hintText: 'Enter your phone number',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty ? 'Please enter your phone number' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Upload Resume (PDF, DOC)',
+                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        const SizedBox(height: 8),
+                        if (resumeName == null) ...[
+                          OutlinedButton.icon(
+                            onPressed: pickResume,
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              side: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            icon: const Icon(Icons.upload_file_rounded, color: themeColor),
+                            label: Text(
+                              'Select File',
+                              style: GoogleFonts.notoSans(color: Colors.black87),
+                            ),
+                          ),
+                        ] else ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: themeColor.withOpacity(0.04),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: themeColor.withOpacity(0.2)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.picture_as_pdf_rounded, color: themeColor),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    resumeName!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.cancel_rounded, color: Colors.grey),
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      resumeName = null;
+                                      resumeBytes = null;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          if (resumeBytes == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please select and upload your resume'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                            return;
+                          }
+
+                          setDialogState(() => isSubmitting = true);
+
+                          try {
+                            await FirebaseService.instance.submitJobApplication(
+                              jobId: job.id,
+                              jobTitle: job.title,
+                              name: nameCtrl.text.trim(),
+                              email: emailCtrl.text.trim(),
+                              phone: phoneCtrl.text.trim(),
+                              resumeFileName: resumeName,
+                              resumeFileBytes: resumeBytes,
+                            );
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              _showSuccessDialog(context, job.title, job.company);
+                            }
+                          } catch (e) {
+                            setDialogState(() => isSubmitting = false);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Submission failed: $e'),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: themeColor,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey,
+                    elevation: 0,
+                  ),
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('Submit Application'),
+                ),
+              ],
+            );
           },
         );
       },
     );
+  }
+
+  void _showSuccessDialog(BuildContext context, String jobTitle, String company) {
+    const darkBlue = Color(0xFF0A192F);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'Application Successful',
+            style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, color: darkBlue),
+          ),
+          content: Text(
+            'Your application for "$jobTitle" at $company has been submitted successfully.',
+            style: GoogleFonts.notoSans(fontSize: 14, color: Colors.black87),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _getPostedAgoText(DateTime postedAt) {
+    final now = DateTime.now();
+    final difference = now.difference(postedAt);
+
+    if (difference.inDays < 0) {
+      return 'Posted today';
+    }
+
+    if (difference.inDays == 0) {
+      if (difference.inHours > 0) {
+        return 'Posted ${difference.inHours} ${difference.inHours == 1 ? 'hour' : 'hours'} ago';
+      } else if (difference.inMinutes > 0) {
+        return 'Posted ${difference.inMinutes} ${difference.inMinutes == 1 ? 'minute' : 'minutes'} ago';
+      } else {
+        return 'Posted just now';
+      }
+    } else if (difference.inDays == 1) {
+      return 'Posted yesterday';
+    } else if (difference.inDays < 30) {
+      return 'Posted ${difference.inDays} days ago';
+    } else {
+      final months = (difference.inDays / 30).floor();
+      return 'Posted $months ${months == 1 ? 'month' : 'months'} ago';
+    }
+  }
+
+  String _getShareUrl(String jobId) {
+    final baseUri = Uri.base;
+    if (baseUri.toString().contains('/#/')) {
+      return '${baseUri.origin}/#/jobs?id=$jobId';
+    } else {
+      return '${baseUri.origin}/jobs?id=$jobId';
+    }
   }
 
   Widget _buildTagsLayout(List<String> tags, bool isMobile, {required bool isSearchTags}) {
@@ -142,9 +817,12 @@ class _MyHomePageState extends State<MyHomePage> {
           }).toList(),
         ],
       );
-    } else {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+    }
+    return Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 8,
         children: [
           Text(
             isSearchTags ? 'Trending Searches: ' : 'Recent Openings: ',
@@ -155,33 +833,29 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
           ...tags.map((tag) {
-            return Padding(
-              padding: const EdgeInsets.only(left: 8.0),
-              child: ActionChip(
-                label: Text(
-                  tag,
-                  style: GoogleFonts.notoSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: const Color.fromARGB(255, 20, 110, 184),
-                  ),
+            return ActionChip(
+              label: Text(
+                tag,
+                style: GoogleFonts.notoSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: const Color.fromARGB(255, 20, 110, 184),
                 ),
-                backgroundColor: Colors.white,
-                elevation: 0,
-                side: const BorderSide(color: Colors.black12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                onPressed: () {
-                  _skillsController.text = tag;
-                  _performSearch(query: tag);
-                },
               ),
+              backgroundColor: Colors.white,
+              elevation: 0,
+              side: const BorderSide(color: Colors.black12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              onPressed: () {
+                _skillsController.text = tag;
+                _performSearch(query: tag);
+              },
             );
           }).toList(),
         ],
       );
-    }
   }
 
   @override
@@ -303,23 +977,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             ),
           ),
-          ExpansionTile(
-            title: Text('For Businesses', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
-            children: [
-              'Professional Services',
-              'Staffing Services',
-              'Expertise',
-              'Stratergy & Transformation',
-              'Software & Cloud Engineering',
-              'Quality Assurance & Engineering',
-              'Data Analytics & AI',
-              'Service Management',
-              'DevOps & DevSecOps',
-            ].map((item) => ListTile(
-              title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
-              onTap: () => Navigator.pop(context),
-            )).toList(),
-          ),
+
           ExpansionTile(
             title: Text('For Job Seekers', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
             children: [
@@ -336,25 +994,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 }
               },
             )).toList(),
-          ),
-          ExpansionTile(
-            title: Text('Industries', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
-            children: [
-              'Healthcare',
-              'Technology',
-              'Life Sciences',
-              'Financial Services & Insurance',
-              'Retail & Consumer Packaged Goods',
-              'Public Sector',
-              'Video Games',
-            ].map((item) => ListTile(
-              title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
-              onTap: () => Navigator.pop(context),
-            )).toList(),
-          ),
-          ListTile(
-            title: Text('Insights', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
-            onTap: () => Navigator.pop(context),
           ),
           ListTile(
             title: Text('Testimonials', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
@@ -375,8 +1014,16 @@ class _MyHomePageState extends State<MyHomePage> {
               title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
               onTap: () {
                 Navigator.pop(context);
-                if (item == 'Contact Us') {
-                  _showContactDialog(context);
+                final pathMap = {
+                  'Leadership': '/about/leadership',
+                  'Social Responsibility': '/about/social-responsibility',
+                  'Corporate Careers': '/about/corporate-careers',
+                  'Locations': '/about/locations',
+                  'Contact Us': '/about/contact-us',
+                };
+                final path = pathMap[item];
+                if (path != null) {
+                  context.go(path);
                 }
               },
             )).toList(),
@@ -707,100 +1354,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
 
-                  // 4. Expertise Section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 40.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Sectors We Recruit For',
-                          style: GoogleFonts.notoSans(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 15),
-                        Text(
-                          'We source and place top-tier talent across six major global industries, ensuring matches that align skills with international requirements.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.notoSans(
-                            fontSize: 15,
-                            height: 1.4,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        FeatureCard(
-                          baseColor: const Color(0xFF9e2a2b),
-                          icon: Icons.star_border,
-                          title: 'Information\nTechnology',
-                          firstText: 'Software & Development',
-                          secondText: 'Sourcing senior developers & architects.',
-                          image: 'images/logo1.png',
-                          width: w - 40,
-                          height: 450,
-                        ),
-                        const SizedBox(height: 20),
-                        FeatureCard(
-                          baseColor: const Color(0xFF183a37),
-                          icon: Icons.star_border,
-                          title: 'Healthcare &\nMedicine',
-                          firstText: 'Nursing & General Medicine',
-                          secondText: 'Placing registered nurses & doctors.',
-                          image: 'images/logo2.png',
-                          width: w - 40,
-                          height: 450,
-                        ),
-                        const SizedBox(height: 20),
-                        FeatureCard(
-                          baseColor: const Color(0xFF33507B),
-                          icon: Icons.star_border,
-                          title: 'Engineering &\nConstruction',
-                          firstText: 'Structural & Civil Engineering',
-                          secondText: 'Recruiting civil & structural engineers.',
-                          image: 'images/logo3.png',
-                          width: w - 40,
-                          height: 450,
-                        ),
-                        const SizedBox(height: 20),
-                        FeatureCard(
-                          baseColor: const Color(0xFFdc2f02),
-                          icon: Icons.star_border,
-                          title: 'Manufacturing &\nIndustrial',
-                          firstText: 'Precision & Machinery',
-                          secondText: 'CNC machinists, welders & technicians.',
-                          image: 'images/logo4.png',
-                          width: w - 40,
-                          height: 450,
-                        ),
-                        const SizedBox(height: 20),
-                        FeatureCard(
-                          baseColor: const Color(0xFF869882),
-                          icon: Icons.star_border,
-                          title: 'Hospitality &\nCulinary',
-                          firstText: 'Management & Culinary Arts',
-                          secondText: 'Placing operations managers & chefs.',
-                          image: 'images/logo5.png',
-                          width: w - 40,
-                          height: 450,
-                        ),
-                        const SizedBox(height: 20),
-                        FeatureCard(
-                          baseColor: const Color(0xFF231942),
-                          icon: Icons.star_border,
-                          title: 'Automotive &\nRepairs',
-                          firstText: 'Diagnostics & Repair',
-                          secondText: 'Placing automotive engineers & technicians.',
-                          image: 'images/logo6.png',
-                          width: w - 40,
-                          height: 450,
-                        ),
-                      ],
-                    ),
-                  ),
+
 
                   // 5. Leader Section
                   Padding(
@@ -1048,34 +1602,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          HoverText(
-                            dropdownItems: const [
-                              'Professional Services',
-                              'Staffing Services',
-                              'Expertise',
-                              'Stratergy & Transformation',
-                              'Software & Cloud Engineering',
-                              'Quality Assurance & Engineering',
-                              'Data Analytics & AI',
-                              'Service Management',
-                              'DevOps & DevSecOps',
-                            ],
-                            // <--- Replace the original Text widget here
-                            text: 'For Businesses',
-                            // Define your colors clearly
-                            defaultStyle: GoogleFonts.notoSans(
-                              fontSize: 23,
-                              height: 1.3,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black,
-                            ),
-                            hoverStyle: const TextStyle(
-                              color: Color.fromARGB(255, 20, 110, 184),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(width: 50),
+
                           const HoverText(
                             dropdownItems: [
                               'Search IT Jobs',
@@ -1098,46 +1625,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             ),
                           ),
                           SizedBox(width: 50),
-                          const HoverText(
-                            dropdownItems: [
-                              'Healthcare',
-                              'Technology',
-                              'Life Sciences',
-                              'Financial Services & Insurance',
-                              'Retail & Consumer Packaged Goods',
-                              'Public Sector',
-                              'Video Games',
-                            ],
-                            text: 'Industries',
-                            // Define your colors clearly
-                            defaultStyle: TextStyle(
-                              color: Colors.black,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            hoverStyle: TextStyle(
-                              color: Color.fromARGB(255, 20, 110, 184),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(width: 50),
-                          const HoverText(
-                            dropdownItems: [],
-                            text: 'Insights',
-                            // Define your colors clearly
-                            defaultStyle: TextStyle(
-                              color: Colors.black,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            hoverStyle: TextStyle(
-                              color: Color.fromARGB(255, 20, 110, 184),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(width: 50),
+
                           HoverText(
                             dropdownItems: const [],
                             text: 'Testimonials',
@@ -1164,10 +1652,18 @@ class _MyHomePageState extends State<MyHomePage> {
                             ],
                             text: 'About Us',
                             onDropdownItemSelected: (item) {
-                              if (item == 'Contact Us') {
-                                _showContactDialog(context);
-                              }
-                            },
+                               final pathMap = {
+                                 'Leadership': '/about/leadership',
+                                 'Social Responsibility': '/about/social-responsibility',
+                                 'Corporate Careers': '/about/corporate-careers',
+                                 'Locations': '/about/locations',
+                                 'Contact Us': '/about/contact-us',
+                               };
+                               final path = pathMap[item];
+                               if (path != null) {
+                                 context.go(path);
+                               }
+                             },
                             // Define your colors clearly
                             defaultStyle: const TextStyle(
                               color: Colors.black,
@@ -1614,111 +2110,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     ],
                   ),
                 ),
-                SizedBox(height: 100),
-                Center(
-                  child: Column(
-                    children: [
-                      Text(
-                        'Sectors We Recruit For',
-                        style: GoogleFonts.notoSans(
-                          fontSize: 23,
-                          height: 1.3,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(height: 28),
-                      Text(
-                        'We source and place top-tier talent across six major global industries, ensuring matches that align skills with international requirements.',
-                        style: GoogleFonts.notoSans(
-                          fontSize: 16,
-                          height: 1.3,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.black,
-                        ),
-                      ),
-                      // Simplified structure for the three cards on a large screen:
-                      Padding(
-                        padding: const EdgeInsets.all(30.0),
-                        child: Row(
-                          children: <Widget>[
-                            Expanded(
-                              child: FeatureCard(
-                                baseColor: Color(0xFF9e2a2b), // Dark Blue
-                                icon: Icons.star_border,
-                                title: 'Information\nTechnology',
-                                firstText: 'Software & Development',
-                                secondText: 'Sourcing senior developers & architects.',
-                                image: 'images/logo1.png',
-                              ),
-                            ), // Card 1
-                            SizedBox(width: 40),
-                            Expanded(
-                              child: FeatureCard(
-                                baseColor: Color(0xFF183a37), // Dark Blue
-                                icon: Icons.star_border,
-                                title: 'Healthcare &\nMedicine',
-                                firstText: 'Nursing & General Medicine',
-                                secondText: 'Placing registered nurses & doctors.',
-                                image: 'images/logo2.png',
-                              ),
-                            ), // Card 2
-                            SizedBox(width: 40),
-                            Expanded(
-                              child: FeatureCard(
-                                baseColor: Color(0xFF33507B), // Dark Blue
-                                icon: Icons.star_border,
-                                title: 'Engineering &\nConstruction',
-                                firstText: 'Structural & Civil Engineering',
-                                secondText: 'Recruiting civil & structural engineers.',
-                                image: 'images/logo3.png',
-                              ),
-                            ), // Card 3
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(30.0),
-                        child: Row(
-                          children: <Widget>[
-                            Expanded(
-                              child: FeatureCard(
-                                baseColor: Color(0xFFdc2f02), // Dark Blue
-                                icon: Icons.star_border,
-                                title: 'Manufacturing &\nIndustrial',
-                                firstText: 'Precision & Machinery',
-                                secondText: 'CNC machinists, welders & technicians.',
-                                image: 'images/logo4.png',
-                              ),
-                            ), // Card 1
-                            SizedBox(width: 40),
-                            Expanded(
-                              child: FeatureCard(
-                                baseColor: Color(0xFF869882), // Dark Blue
-                                icon: Icons.star_border,
-                                title: 'Hospitality &\nCulinary',
-                                firstText: 'Management & Culinary Arts',
-                                secondText: 'Placing operations managers & chefs.',
-                                image: 'images/logo5.png',
-                              ),
-                            ), // Card 2
-                            SizedBox(width: 40),
-                            Expanded(
-                              child: FeatureCard(
-                                baseColor: Color(0xFF231942), // Dark Blue
-                                icon: Icons.star_border,
-                                title: 'Automotive &\nRepairs',
-                                firstText: 'Diagnostics & Repair',
-                                secondText: 'Placing automotive engineers & technicians.',
-                                image: 'images/logo6.png',
-                              ),
-                            ), // Card 3
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+
                 SizedBox(
                   height: 500,
                   width: 1100,

@@ -4,6 +4,11 @@ import 'package:avm_global_web/controllers/global_context_service/global_context
 import 'package:avm_global_web/routes/app_route_constants.dart';
 import 'package:avm_global_web/view/home_page/home_page.dart';
 import 'package:avm_global_web/view/jobs/jobs_page.dart';
+import 'package:avm_global_web/view/about_us/leadership_page.dart';
+import 'package:avm_global_web/view/about_us/social_responsibility_page.dart';
+import 'package:avm_global_web/view/about_us/corporate_careers_page.dart';
+import 'package:avm_global_web/view/about_us/locations_page.dart';
+import 'package:avm_global_web/view/about_us/contact_us_page.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 class MyAppRouter {
@@ -35,15 +40,52 @@ class MyAppRouter {
         pageBuilder: (context, state) {
           final jobId = state.uri.queryParameters['id'];
           final query = state.uri.queryParameters['query'];
+          final location = state.uri.queryParameters['location'];
           return MaterialPage(
             name: MyAppRouteConstants.jobsRouteName,
             key: state.pageKey,
             child: JobsPage(
               initialJobId: jobId,
               initialSearchQuery: query,
+              initialLocationQuery: location,
             ),
           );
         },
+      ),
+      GoRoute(
+        name: MyAppRouteConstants.leadershipRouteName,
+        path: '/about/leadership',
+        pageBuilder: (context, state) => const MaterialPage(
+          child: LeadershipPage(),
+        ),
+      ),
+      GoRoute(
+        name: MyAppRouteConstants.socialResponsibilityRouteName,
+        path: '/about/social-responsibility',
+        pageBuilder: (context, state) => const MaterialPage(
+          child: SocialResponsibilityPage(),
+        ),
+      ),
+      GoRoute(
+        name: MyAppRouteConstants.corporateCareersRouteName,
+        path: '/about/corporate-careers',
+        pageBuilder: (context, state) => const MaterialPage(
+          child: CorporateCareersPage(),
+        ),
+      ),
+      GoRoute(
+        name: MyAppRouteConstants.locationsRouteName,
+        path: '/about/locations',
+        pageBuilder: (context, state) => const MaterialPage(
+          child: LocationsPage(),
+        ),
+      ),
+      GoRoute(
+        name: MyAppRouteConstants.contactUsRouteName,
+        path: '/about/contact-us',
+        pageBuilder: (context, state) => const MaterialPage(
+          child: ContactUsPage(),
+        ),
       ),
         // GoRoute(
         //   name: MyAppRouteConstants.aboutPageRouteName,

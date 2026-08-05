@@ -13,7 +13,13 @@ import 'dart:js' as js;
 class JobsPage extends StatefulWidget {
   final String? initialJobId;
   final String? initialSearchQuery;
-  const JobsPage({super.key, this.initialJobId, this.initialSearchQuery});
+  final String? initialLocationQuery;
+  const JobsPage({
+    super.key,
+    this.initialJobId,
+    this.initialSearchQuery,
+    this.initialLocationQuery,
+  });
 
   @override
   State<JobsPage> createState() => _JobsPageState();
@@ -28,6 +34,8 @@ class _JobsPageState extends State<JobsPage> {
   Job? _selectedJob; // Used for split screen detailed view
   bool _hasInitializedSelection = false;
   String _markedSuccessQuery = '';
+  String _locationQuery = '';
+  bool _showingFallbackResults = false;
 
   final List<String> _jobTypes = ['All', 'Full-time', 'Part-time', 'Contract', 'Remote', 'Hybrid'];
 
@@ -150,6 +158,90 @@ class _JobsPageState extends State<JobsPage> {
     }
   }
 
+  bool _jobMatches(Job job, List<String> queryTerms) {
+    if (queryTerms.isEmpty) return true;
+    final title = job.title.toLowerCase();
+    final company = job.company.toLowerCase();
+
+    for (final term in queryTerms) {
+      if (!(title.contains(term) || company.contains(term))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _locationMatches(Job job, List<String> locationTerms) {
+    if (locationTerms.isEmpty) return true;
+    final location = job.location.toLowerCase();
+
+    for (final term in locationTerms) {
+      bool termMatches = location.contains(term);
+
+      if (!termMatches && _countryToCities.containsKey(term)) {
+        final cities = _countryToCities[term]!;
+        termMatches = cities.any((city) => location.contains(city));
+      }
+
+      if (!termMatches) return false;
+    }
+    return true;
+  }
+
+  bool _jobAndLocationMatchesCombined(Job job, List<String> queryTerms) {
+    if (queryTerms.isEmpty) return true;
+    final title = job.title.toLowerCase();
+    final company = job.company.toLowerCase();
+    final location = job.location.toLowerCase();
+
+    for (final term in queryTerms) {
+      bool termMatches = title.contains(term) ||
+          company.contains(term) ||
+          location.contains(term);
+
+      if (!termMatches && _countryToCities.containsKey(term)) {
+        final cities = _countryToCities[term]!;
+        termMatches = cities.any((city) => location.contains(city));
+      }
+
+      if (!termMatches) return false;
+    }
+    return true;
+  }
+
+  Widget _buildFallbackBanner(bool isMobile) {
+    if (!_showingFallbackResults || _locationQuery.isEmpty || _searchQuery.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Colors.orange, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'No $_searchQuery jobs found in $_locationQuery. Showing $_searchQuery jobs in other locations.',
+              style: GoogleFonts.notoSans(
+                color: Colors.orange[800],
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -157,8 +249,19 @@ class _JobsPageState extends State<JobsPage> {
     _searchController = TextEditingController();
     if (widget.initialSearchQuery != null) {
       _searchQuery = widget.initialSearchQuery!;
-      _searchController.text = widget.initialSearchQuery!;
     }
+    if (widget.initialLocationQuery != null) {
+      _locationQuery = widget.initialLocationQuery!;
+    }
+
+    if (_searchQuery.isNotEmpty && _locationQuery.isNotEmpty) {
+      _searchController.text = '$_searchQuery $_locationQuery';
+    } else if (_searchQuery.isNotEmpty) {
+      _searchController.text = _searchQuery;
+    } else if (_locationQuery.isNotEmpty) {
+      _searchController.text = _locationQuery;
+    }
+
     _jobsStream = FirebaseService.instance.getJobsStream();
     _pageFocusNode = FocusNode();
 
@@ -308,40 +411,66 @@ class _JobsPageState extends State<JobsPage> {
           }
           
           // Filter jobs
-          final filteredJobs = jobs.where((job) {
+          bool showingFallback = false;
+          List<Job> filteredJobs = [];
+
+          if (_locationQuery.isNotEmpty) {
+            final jobQueryTerms = _searchQuery
+                .toLowerCase()
+                .split(RegExp(r'\s+'))
+                .where((term) => term.isNotEmpty)
+                .toList();
+
+            final locQueryTerms = _locationQuery
+                .toLowerCase()
+                .split(RegExp(r'\s+'))
+                .where((term) => term.isNotEmpty)
+                .toList();
+
+            // Try both first
+            final primaryJobs = jobs.where((job) {
+              final matchesType = _selectedType == 'All' || job.type == _selectedType;
+              return matchesType && _jobMatches(job, jobQueryTerms) && _locationMatches(job, locQueryTerms);
+            }).toList();
+
+            if (primaryJobs.isNotEmpty) {
+              filteredJobs = primaryJobs;
+            } else if (jobQueryTerms.isNotEmpty) {
+              // Fallback to job only
+              final fallbackJobs = jobs.where((job) {
+                final matchesType = _selectedType == 'All' || job.type == _selectedType;
+                return matchesType && _jobMatches(job, jobQueryTerms);
+              }).toList();
+
+              if (fallbackJobs.isNotEmpty) {
+                filteredJobs = fallbackJobs;
+                showingFallback = true;
+              }
+            }
+          } else {
+            // Combined query
             final queryTerms = _searchQuery
                 .toLowerCase()
                 .split(RegExp(r'\s+'))
                 .where((term) => term.isNotEmpty)
                 .toList();
 
-            bool matchesSearch = true;
-            if (queryTerms.isNotEmpty) {
-              final title = job.title.toLowerCase();
-              final company = job.company.toLowerCase();
-              final location = job.location.toLowerCase();
+            filteredJobs = jobs.where((job) {
+              final matchesType = _selectedType == 'All' || job.type == _selectedType;
+              return matchesType && _jobAndLocationMatchesCombined(job, queryTerms);
+            }).toList();
+          }
 
-              for (final term in queryTerms) {
-                bool termMatches = title.contains(term) ||
-                    company.contains(term) ||
-                    location.contains(term);
-
-                // If no direct match, check if the term is a country and the location is a city in that country
-                if (!termMatches && _countryToCities.containsKey(term)) {
-                  final cities = _countryToCities[term]!;
-                  termMatches = cities.any((city) => location.contains(city));
-                }
-
-                if (!termMatches) {
-                  matchesSearch = false;
-                  break;
-                }
+          // Update state in post frame callback to avoid setting state during build
+          if (showingFallback != _showingFallbackResults) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {
+                  _showingFallbackResults = showingFallback;
+                });
               }
-            }
-
-            final matchesType = _selectedType == 'All' || job.type == _selectedType;
-            return matchesSearch && matchesType;
-          }).toList();
+            });
+          }
 
           // Mark search query as successful in Firestore if it contains elements and returns jobs
           if (_searchQuery.trim().isNotEmpty && filteredJobs.isNotEmpty && _searchQuery != _markedSuccessQuery) {
@@ -399,6 +528,9 @@ class _JobsPageState extends State<JobsPage> {
               children: [
                 // Banner / Search bar section
                 _buildHeroSection(isMobile),
+                
+                // Fallback banner
+                _buildFallbackBanner(isMobile),
                 
                 // Main content area
                 filteredJobs.isEmpty
@@ -507,7 +639,12 @@ class _JobsPageState extends State<JobsPage> {
                 ),
                 child: TextField(
                   controller: _searchController,
-                  onChanged: (val) => setState(() => _searchQuery = val),
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val;
+                      _locationQuery = '';
+                    });
+                  },
                   decoration: InputDecoration(
                     hintText: 'Search title, company, location...',
                     hintStyle: GoogleFonts.notoSans(fontSize: 14, color: Colors.black38),

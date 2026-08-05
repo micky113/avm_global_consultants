@@ -212,7 +212,7 @@ class FirebaseService {
           
           final uploadTask = storageRef.putData(
             resumeFileBytes,
-            SettableMetadata(contentType: 'application/pdf'),
+            SettableMetadata(contentType: _getContentType(resumeFileName)),
           );
           
           final snapshot = await uploadTask.timeout(const Duration(seconds: 30));
@@ -810,7 +810,7 @@ class FirebaseService {
           
           final uploadTask = storageRef.putData(
             resumeFileBytes,
-            SettableMetadata(contentType: 'application/pdf'),
+            SettableMetadata(contentType: _getContentType(resumeFileName)),
           );
           
           final snapshot = await uploadTask.timeout(const Duration(seconds: 30));
@@ -1062,5 +1062,17 @@ class FirebaseService {
         rethrow;
       }
     }
+  }
+
+  String _getContentType(String fileName) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.pdf')) {
+      return 'application/pdf';
+    } else if (lower.endsWith('.doc')) {
+      return 'application/msword';
+    } else if (lower.endsWith('.docx')) {
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    }
+    return 'application/octet-stream';
   }
 }

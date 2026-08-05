@@ -75,4 +75,9 @@ class MyAppRouteConstants {
   static const String chatsAdminRouteName = 'chatsadminscreen';
   static const String testRouteName = 'testpage';
   static const String jobsRouteName = 'jobs';
+  static const String leadershipRouteName = 'leadership';
+  static const String socialResponsibilityRouteName = 'social-responsibility';
+  static const String corporateCareersRouteName = 'corporate-careers';
+  static const String locationsRouteName = 'locations';
+  static const String contactUsRouteName = 'contact-us';
 }

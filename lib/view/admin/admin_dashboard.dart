@@ -9,6 +9,7 @@ import 'package:avm_global_web/models/job.dart';
 import 'package:avm_global_web/models/job_application.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:js' as js;
+import 'dart:html' as html;
 
 class AdminDashboardDialog extends StatefulWidget {
   final Color themeColor;
@@ -2454,7 +2455,12 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
         ),
       );
     } else {
-      js.context.callMethod('open', [resumeUrl]);
+      // Use HTML AnchorElement to natively open the download URL in a new tab
+      // This bypasses browser popup blockers and triggers correct downloads for non-PDFs (doc/docx)
+      html.AnchorElement(href: resumeUrl)
+        ..target = '_blank'
+        ..rel = 'noopener noreferrer'
+        ..click();
     }
   }
 }
