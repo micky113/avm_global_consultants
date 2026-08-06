@@ -23,6 +23,11 @@ class AVMGlobalApp extends StatelessWidget {
       title: 'AVM Global Consultants | Overseas Recruitment & Careers Abroad',
       debugShowCheckedModeBanner: false,
       routerConfig: MyAppRouter.router,
+      builder: (context, child) {
+        return SelectionArea(
+          child: child!,
+        );
+      },
     );
   }
 }

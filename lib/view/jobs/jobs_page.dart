@@ -209,6 +209,28 @@ class _JobsPageState extends State<JobsPage> {
     return true;
   }
 
+  void _logJobView(Job job) {
+    FirebaseAnalytics.instance.logEvent(
+      name: 'view_job',
+      parameters: {
+        'job_id': job.id,
+        'job_title': job.title,
+        'job_company': job.company,
+      },
+    );
+    if (kIsWeb && js.context.hasProperty('gtag')) {
+      js.context.callMethod('gtag', [
+        'event',
+        'view_job',
+        js.JsObject.jsify({
+          'job_id': job.id,
+          'job_title': job.title,
+          'job_company': job.company,
+        })
+      ]);
+    }
+  }
+
   Widget _buildFallbackBanner(bool isMobile) {
     if (!_showingFallbackResults || _locationQuery.isEmpty || _searchQuery.isEmpty) {
       return const SizedBox.shrink();
@@ -401,6 +423,7 @@ class _JobsPageState extends State<JobsPage> {
               final jobIndex = jobs.indexWhere((j) => j.id == widget.initialJobId);
               if (jobIndex != -1) {
                 _selectedJob = jobs[jobIndex];
+                _logJobView(_selectedJob!);
                 if (!isDesktop) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     _showMobileDetailSheet(_selectedJob!);
@@ -716,6 +739,7 @@ class _JobsPageState extends State<JobsPage> {
       ),
       child: InkWell(
         onTap: () {
+          _logJobView(job);
           if (isDesktop) {
             setState(() => _selectedJob = job);
             if (_pageScrollController.hasClients) {
@@ -860,158 +884,160 @@ class _JobsPageState extends State<JobsPage> {
   }
 
   Widget _buildDetailPanel(Job job) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Detail Header
-            Container(
-              padding: const EdgeInsets.all(24.0),
-              color: Colors.grey[50],
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          job.title,
-                          style: GoogleFonts.notoSans(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: darkBlue,
-                          ),
-                        ),
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              final shareUrl = _getShareUrl(job.id);
-                              Clipboard.setData(ClipboardData(text: shareUrl));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Job link copied to clipboard!'),
-                                  behavior: SnackBarBehavior.floating,
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: themeColor,
-                              side: BorderSide(color: themeColor),
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                            icon: const Icon(Icons.share_rounded, size: 18),
-                            label: Text(
-                              'Share Job',
-                              style: GoogleFonts.notoSans(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          ElevatedButton(
-                            onPressed: () => _showApplyDialog(job),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: themeColor,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              elevation: 0,
-                            ),
-                            child: Text(
-                              'Apply Now',
-                              style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, color: Colors.white),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    job.company,
-                    style: GoogleFonts.notoSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: themeColor,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 8,
-                    children: [
-                      _buildDetailBadge(Icons.location_on_rounded, job.location),
-                      _buildDetailBadge(Icons.work_rounded, job.type),
-                      _buildDetailBadge(Icons.monetization_on_rounded, job.salaryRange),
-                      _buildDetailBadge(Icons.calendar_today_rounded, _getPostedAgoText(job.postedAt)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            
-            // Detail Body
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Job Description',
-                    style: GoogleFonts.notoSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: darkBlue,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    job.description,
-                    style: GoogleFonts.notoSans(
-                      fontSize: 14,
-                      color: Colors.black87,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Requirements',
-                    style: GoogleFonts.notoSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: darkBlue,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    job.requirements,
-                    style: GoogleFonts.notoSans(
-                      fontSize: 14,
-                      color: Colors.black87,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
-              ),
+    return SelectionArea(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey[200]!),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Detail Header
+              Container(
+                padding: const EdgeInsets.all(24.0),
+                color: Colors.grey[50],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            job.title,
+                            style: GoogleFonts.notoSans(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: darkBlue,
+                            ),
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                final shareUrl = _getShareUrl(job.id);
+                                Clipboard.setData(ClipboardData(text: shareUrl));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Job link copied to clipboard!'),
+                                    behavior: SnackBarBehavior.floating,
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: themeColor,
+                                side: BorderSide(color: themeColor),
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              icon: const Icon(Icons.share_rounded, size: 18),
+                              label: Text(
+                                'Share Job',
+                                style: GoogleFonts.notoSans(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton(
+                              onPressed: () => _showApplyDialog(job),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: themeColor,
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                elevation: 0,
+                              ),
+                              child: Text(
+                                'Apply Now',
+                                style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      job.company,
+                      style: GoogleFonts.notoSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: themeColor,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 8,
+                      children: [
+                        _buildDetailBadge(Icons.location_on_rounded, job.location),
+                        _buildDetailBadge(Icons.work_rounded, job.type),
+                        _buildDetailBadge(Icons.monetization_on_rounded, job.salaryRange),
+                        _buildDetailBadge(Icons.calendar_today_rounded, _getPostedAgoText(job.postedAt)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Detail Body
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SelectableText(
+                      'Job Description',
+                      style: GoogleFonts.notoSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: darkBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      job.description,
+                      style: GoogleFonts.notoSans(
+                        fontSize: 14,
+                        color: Colors.black87,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SelectableText(
+                      'Requirements',
+                      style: GoogleFonts.notoSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: darkBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      job.requirements,
+                      style: GoogleFonts.notoSans(
+                        fontSize: 14,
+                        color: Colors.black87,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1072,151 +1098,153 @@ class _JobsPageState extends State<JobsPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.85,
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
+        return SelectionArea(
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.85,
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        job.title,
-                        style: GoogleFonts.notoSans(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: darkBlue,
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          job.title,
+                          style: GoogleFonts.notoSans(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: darkBlue,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        job.company,
-                        style: GoogleFonts.notoSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: themeColor,
+                        const SizedBox(height: 4),
+                        Text(
+                          job.company,
+                          style: GoogleFonts.notoSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: themeColor,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildDetailBadge(Icons.location_on_rounded, job.location),
-                      const SizedBox(height: 8),
-                      _buildDetailBadge(Icons.work_rounded, job.type),
-                      const SizedBox(height: 8),
-                      _buildDetailBadge(Icons.monetization_on_rounded, job.salaryRange),
-                      const SizedBox(height: 8),
-                      _buildDetailBadge(Icons.calendar_today_rounded, _getPostedAgoText(job.postedAt)),
-                      const Divider(height: 32),
-                      Text(
-                        'Job Description',
-                        style: GoogleFonts.notoSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: darkBlue,
+                        const SizedBox(height: 16),
+                        _buildDetailBadge(Icons.location_on_rounded, job.location),
+                        const SizedBox(height: 8),
+                        _buildDetailBadge(Icons.work_rounded, job.type),
+                        const SizedBox(height: 8),
+                        _buildDetailBadge(Icons.monetization_on_rounded, job.salaryRange),
+                        const SizedBox(height: 8),
+                        _buildDetailBadge(Icons.calendar_today_rounded, _getPostedAgoText(job.postedAt)),
+                        const Divider(height: 32),
+                        SelectableText(
+                          'Job Description',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: darkBlue,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        job.description,
-                        style: GoogleFonts.notoSans(
-                          fontSize: 13,
-                          color: Colors.black87,
-                          height: 1.4,
+                        const SizedBox(height: 8),
+                        SelectableText(
+                          job.description,
+                          style: GoogleFonts.notoSans(
+                            fontSize: 13,
+                            color: Colors.black87,
+                            height: 1.4,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Requirements',
-                        style: GoogleFonts.notoSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: darkBlue,
+                        const SizedBox(height: 20),
+                        SelectableText(
+                          'Requirements',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: darkBlue,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        job.requirements,
-                        style: GoogleFonts.notoSans(
-                          fontSize: 13,
-                          color: Colors.black87,
-                          height: 1.4,
+                        const SizedBox(height: 8),
+                        SelectableText(
+                          job.requirements,
+                          style: GoogleFonts.notoSans(
+                            fontSize: 13,
+                            color: Colors.black87,
+                            height: 1.4,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 32),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                final shareUrl = _getShareUrl(job.id);
-                                Clipboard.setData(ClipboardData(text: shareUrl));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Job link copied to clipboard!'),
-                                    behavior: SnackBarBehavior.floating,
-                                    duration: Duration(seconds: 2),
+                        const SizedBox(height: 32),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  final shareUrl = _getShareUrl(job.id);
+                                  Clipboard.setData(ClipboardData(text: shareUrl));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Job link copied to clipboard!'),
+                                      behavior: SnackBarBehavior.floating,
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: themeColor,
+                                  side: BorderSide(color: themeColor),
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                icon: const Icon(Icons.share_rounded, size: 18),
+                                label: Text(
+                                  'Share',
+                                  style: GoogleFonts.notoSans(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
                                   ),
-                                );
-                              },
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: themeColor,
-                                side: BorderSide(color: themeColor),
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                              icon: const Icon(Icons.share_rounded, size: 18),
-                              label: Text(
-                                'Share',
-                                style: GoogleFonts.notoSans(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                _showApplyDialog(job);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: themeColor,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                elevation: 0,
-                              ),
-                              child: Text(
-                                'Apply Now',
-                                style: GoogleFonts.notoSans(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  fontSize: 15,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  _showApplyDialog(job);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: themeColor,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  elevation: 0,
+                                ),
+                                child: Text(
+                                  'Apply Now',
+                                  style: GoogleFonts.notoSans(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

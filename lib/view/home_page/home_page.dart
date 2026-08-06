@@ -262,13 +262,34 @@ class _MyHomePageState extends State<MyHomePage> {
     const themeColor = Color(0xFF146EB8);
     const darkBlue = Color(0xFF0A192F);
 
+    FirebaseAnalytics.instance.logEvent(
+      name: 'view_job',
+      parameters: {
+        'job_id': job.id,
+        'job_title': job.title,
+        'job_company': job.company,
+      },
+    );
+    if (kIsWeb && js.context.hasProperty('gtag')) {
+      js.context.callMethod('gtag', [
+        'event',
+        'view_job',
+        js.JsObject.jsify({
+          'job_id': job.id,
+          'job_title': job.title,
+          'job_company': job.company,
+        })
+      ]);
+    }
+
     showDialog(
       context: context,
       builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        return SelectionArea(
+          child: Dialog(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: ConstrainedBox(
             constraints: BoxConstraints(
               maxWidth: 550,
@@ -330,7 +351,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          SelectableText(
                             'Job Description',
                             style: GoogleFonts.notoSans(
                               fontSize: 15,
@@ -339,7 +360,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
+                          SelectableText(
                             job.description,
                             style: GoogleFonts.notoSans(
                               fontSize: 13,
@@ -348,7 +369,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          Text(
+                          SelectableText(
                             'Requirements',
                             style: GoogleFonts.notoSans(
                               fontSize: 15,
@@ -357,7 +378,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
+                          SelectableText(
                             job.requirements,
                             style: GoogleFonts.notoSans(
                               fontSize: 13,
@@ -430,9 +451,10 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
   }
 
   Widget _buildDetailBadge(IconData icon, String text) {
@@ -1005,20 +1027,16 @@ class _MyHomePageState extends State<MyHomePage> {
           ExpansionTile(
             title: Text('About Us', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
             children: [
-              'Leadership',
               'Social Responsibility',
               'Corporate Careers',
-              'Locations',
               'Contact Us',
             ].map((item) => ListTile(
               title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
               onTap: () {
                 Navigator.pop(context);
                 final pathMap = {
-                  'Leadership': '/about/leadership',
                   'Social Responsibility': '/about/social-responsibility',
                   'Corporate Careers': '/about/corporate-careers',
-                  'Locations': '/about/locations',
                   'Contact Us': '/about/contact-us',
                 };
                 final path = pathMap[item];
@@ -1644,19 +1662,15 @@ class _MyHomePageState extends State<MyHomePage> {
                           SizedBox(width: 50),
                           HoverText(
                             dropdownItems: const [
-                              'Leadership',
                               'Social Responsibility',
                               'Corporate Careers',
-                              'Locations',
                               'Contact Us',
                             ],
                             text: 'About Us',
                             onDropdownItemSelected: (item) {
                                final pathMap = {
-                                 'Leadership': '/about/leadership',
                                  'Social Responsibility': '/about/social-responsibility',
                                  'Corporate Careers': '/about/corporate-careers',
-                                 'Locations': '/about/locations',
                                  'Contact Us': '/about/contact-us',
                                };
                                final path = pathMap[item];
