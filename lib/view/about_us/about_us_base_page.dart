@@ -53,15 +53,15 @@ class AboutUsBasePage extends StatelessWidget {
                 Image.asset(
                   'images/logo.png',
                   fit: BoxFit.contain,
-                  width: isMobile ? 42 : 52,
-                  height: isMobile ? 42 : 52,
+                  width: isMobile ? 40 : 54,
+                  height: isMobile ? 28 : 38,
                   errorBuilder: (context, error, stackTrace) => const Icon(
                     Icons.business,
                     color: themeColor,
                     size: 32,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 6),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -69,7 +69,7 @@ class AboutUsBasePage extends StatelessWidget {
                     Text(
                       'AVM Global',
                       style: GoogleFonts.notoSans(
-                        fontSize: isMobile ? 15 : 18,
+                        fontSize: isMobile ? 16 : 18,
                         fontWeight: FontWeight.bold,
                         color: themeColor,
                       ),
@@ -78,8 +78,8 @@ class AboutUsBasePage extends StatelessWidget {
                       'Consultants',
                       style: GoogleFonts.notoSans(
                         fontWeight: FontWeight.w500,
-                        fontSize: isMobile ? 11 : 13,
-                        color: Colors.black87,
+                        fontSize: isMobile ? 11 : 12,
+                        color: Colors.black54,
                       ),
                     ),
                   ],

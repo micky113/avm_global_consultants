@@ -1,11 +1,11 @@
 {
-    "name": "avm_global_web",
-    "short_name": "avm_global_web",
+    "name": "AVM Global Consultants",
+    "short_name": "AVM Global",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#146EB8",
+    "theme_color": "#146EB8",
+    "description": "AVM Global Consultants | Overseas Recruitment & Careers Abroad",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

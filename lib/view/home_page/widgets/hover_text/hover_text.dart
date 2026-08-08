@@ -152,46 +152,51 @@ class _HoverTextState extends State<HoverText> {
               color: Colors.black,
             );
 
-    return GestureDetector(
-      onTap: () {
-        if (widget.onTap != null) {
-          widget.onTap!();
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      key: _buttonKey,
+      onEnter: (_) {
+        // If the overlay is already created, don't recreate it, but ensure active lock is set.
+        if (_overlayEntry == null) {
+          _showOverlay();
         } else {
-          if (_overlayEntry == null) {
-            _showOverlay(); // Show the overlay on tap
-          } else {
-            _hideOverlay(); // Hide the overlay on tap
-          }
+          // If we re-enter the button without the overlay closing, make sure the lock is held.
+          _activeOverlay = this;
         }
-
-        // Optional: Add any other action for the button click
-        print('${widget.text.length.toDouble()} was tapped!');
       },
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        key: _buttonKey,
-        // 1. Detect when the mouse enters the text boundary
-        onEnter: (_) {
-          // If the overlay is already created, don't recreate it, but ensure active lock is set.
-          if (_overlayEntry == null) {
-            _showOverlay();
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (widget.onTap != null) {
+            widget.onTap!();
           } else {
-            // If we re-enter the button without the overlay closing, make sure the lock is held.
-            _activeOverlay = this;
+            if (_overlayEntry == null) {
+              _showOverlay(); // Show the overlay on tap
+            } else {
+              _hideOverlay(); // Hide the overlay on tap
+            }
           }
+
+          // Optional: Add any other action for the button click
+          print('${widget.text.length.toDouble()} was tapped!');
         },
-        child: Column(
-          children: [
-            Text(
-              widget.text,
-              style: finalStyle, // 3. Apply the dynamic style directly
-            ),
-            _isHovering
-                ? CenterLineAnimation(
-                  finalWidth: widget.text.length.toDouble() * 8,
-                )
-                : SizedBox(),
-          ],
+        child: Container(
+          color: Colors.transparent,
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.text,
+                style: finalStyle, // 3. Apply the dynamic style directly
+              ),
+              _isHovering
+                  ? CenterLineAnimation(
+                      finalWidth: widget.text.length.toDouble() * 8,
+                    )
+                  : const SizedBox(),
+            ],
+          ),
         ),
       ),
     );

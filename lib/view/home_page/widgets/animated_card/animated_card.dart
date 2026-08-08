@@ -57,6 +57,10 @@ class _AnimatedCardState extends State<AnimatedCard> {
                 image: DecorationImage(
                   fit: BoxFit.cover,
                   image: Image.asset(widget.imageName).image,
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withValues(alpha: 0.4),
+                    BlendMode.darken,
+                  ),
                 ),
               ),
             ),

@@ -9,6 +9,7 @@ import 'package:avm_global_web/view/about_us/social_responsibility_page.dart';
 import 'package:avm_global_web/view/about_us/corporate_careers_page.dart';
 import 'package:avm_global_web/view/about_us/locations_page.dart';
 import 'package:avm_global_web/view/about_us/contact_us_page.dart';
+import 'package:avm_global_web/view/register/register_page.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 class MyAppRouter {
@@ -85,6 +86,13 @@ class MyAppRouter {
         path: '/about/contact-us',
         pageBuilder: (context, state) => const MaterialPage(
           child: ContactUsPage(),
+        ),
+      ),
+      GoRoute(
+        name: MyAppRouteConstants.registerRouteName,
+        path: '/register',
+        pageBuilder: (context, state) => const MaterialPage(
+          child: RegisterPage(),
         ),
       ),
         // GoRoute(

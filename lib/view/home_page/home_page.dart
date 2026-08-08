@@ -964,8 +964,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       child: ClipOval(
                         child: Image.asset(
                           'images/logo.png',
-                          width: 45,
-                          height: 45,
+                          width: 32,
+                          height: 32,
                           fit: BoxFit.contain,
                         ),
                       ),
@@ -1017,6 +1017,21 @@ class _MyHomePageState extends State<MyHomePage> {
               },
             )).toList(),
           ),
+          ListTile(
+            leading: const Icon(Icons.app_registration_rounded, color: Color(0xFFE28743)),
+            title: Text(
+              'Register as Candidate',
+              style: GoogleFonts.notoSans(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFFE28743),
+              ),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              context.go('/register');
+            },
+          ),
+          const Divider(),
           ListTile(
             title: Text('Testimonials', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
             onTap: () {
@@ -1085,10 +1100,10 @@ class _MyHomePageState extends State<MyHomePage> {
                   Image.asset(
                     'images/logo.png',
                     fit: BoxFit.contain,
-                    width: w < 600 ? null : 60,
-                    height: w < 600 ? 52 : 40,
+                    width: w < 600 ? 40 : 54,
+                    height: w < 600 ? 28 : 38,
                   ),
-                  SizedBox(width: w < 600 ? 10 : 8),
+                  const SizedBox(width: 6),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1096,17 +1111,17 @@ class _MyHomePageState extends State<MyHomePage> {
                       Text(
                         'AVM Global',
                         style: GoogleFonts.notoSans(
-                          fontSize: w < 600 ? 16 : 14,
-                          fontWeight: FontWeight.w600,
-                          color: const Color.fromARGB(255, 20, 110, 184),
+                          fontSize: w < 600 ? 16 : 18,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF146EB8),
                         ),
                       ),
                       Text(
                         'Consultants',
                         style: GoogleFonts.notoSans(
                           fontWeight: FontWeight.w500,
-                          fontSize: w < 600 ? 12 : 11,
-                          color: Colors.black,
+                          fontSize: w < 600 ? 11 : 12,
+                          color: Colors.black54,
                         ),
                       ),
                     ],
@@ -1461,7 +1476,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                       Container(
                         height: 260,
-                        color: const Color(0xFF0A192F).withValues(alpha: 0.55),
+                        color: const Color(0xFF0A192F).withValues(alpha: 0.75),
                       ),
                       Positioned(
                         left: 20,
@@ -1567,35 +1582,40 @@ class _MyHomePageState extends State<MyHomePage> {
                       child: Stack(
                         // mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          Image.asset(
-                            'images/logo.png',
-                            fit: BoxFit.fitHeight,
-                            width: 160,
-                            height: 100, // Logo size
+                          Positioned(
+                            top: 36,
+                            left: 0,
+                            child: Image.asset(
+                              'images/logo.png',
+                              fit: BoxFit.contain,
+                              width: 54,
+                              height: 38,
+                            ),
                           ),
 
                           Positioned(
                             width: 150,
-                            left: 95,
-                            top: 23,
+                            left: 60,
+                            top: 35,
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                SizedBox(height: 3),
+                                const SizedBox(height: 3),
                                 Text(
                                   'AVM Global',
                                   style: GoogleFonts.notoSans(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color.fromARGB(255, 20, 110, 184),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF146EB8),
                                   ),
                                 ),
-                                // const SizedBox(height: 55),
                                 Text(
                                   'Consultants',
                                   style: GoogleFonts.notoSans(
                                     fontWeight: FontWeight.w500,
-                                    fontSize: 13,
+                                    fontSize: 12,
+                                    color: Colors.black54,
                                   ),
                                 ),
                               ],
@@ -1621,6 +1641,26 @@ class _MyHomePageState extends State<MyHomePage> {
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
 
+                          ElevatedButton.icon(
+                            onPressed: () => context.go('/register'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE28743),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(24)),
+                            ),
+                            icon: const Icon(Icons.app_registration_rounded, size: 16),
+                            label: Text(
+                              'Register',
+                              style: GoogleFonts.notoSans(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 30),
                           const HoverText(
                             dropdownItems: [
                               'Search IT Jobs',
@@ -1642,7 +1682,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          SizedBox(width: 50),
+                          const SizedBox(width: 40),
 
                           HoverText(
                             dropdownItems: const [],
@@ -2247,7 +2287,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     Container(
                       width: w,
                       height: h / 2.5,
-                      color: const Color(0xFF0A192F).withValues(alpha: 0.55),
+                      color: const Color(0xFF0A192F).withValues(alpha: 0.75),
                     ),
                     Positioned(
                       top: 50,

@@ -366,6 +366,12 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                         isLargeScreen: isLargeScreen,
                       ),
                       _buildSidebarItem(
+                        id: 'registered_users',
+                        title: 'Registered Users',
+                        icon: Icons.people_rounded,
+                        isLargeScreen: isLargeScreen,
+                      ),
+                      _buildSidebarItem(
                         id: 'testimonials',
                         title: 'Manage Testimonials',
                         icon: Icons.reviews_rounded,
@@ -384,16 +390,17 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
               // Panel Display Area
               Expanded(
                 child: Container(
-                  color: Colors.grey[100],
                   child: _activeTab == 'inquiries'
                       ? _buildInquiriesPanel()
                       : _activeTab == 'jobs'
                           ? _buildJobsPanel()
                           : _activeTab == 'job_applications'
                               ? _buildJobApplicationsPanel()
-                              : _activeTab == 'testimonials'
-                                  ? _buildTestimonialsPanel()
-                                  : _buildRecentSearchesPanel(),
+                              : _activeTab == 'registered_users'
+                                  ? _buildRegisteredUsersPanel()
+                                  : _activeTab == 'testimonials'
+                                      ? _buildTestimonialsPanel()
+                                      : _buildRecentSearchesPanel(),
                 ),
               ),
             ],
@@ -421,9 +428,11 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                       ? 1
                       : _activeTab == 'job_applications'
                           ? 2
-                          : _activeTab == 'testimonials'
+                          : _activeTab == 'registered_users'
                               ? 3
-                              : 4,
+                              : _activeTab == 'testimonials'
+                                  ? 4
+                                  : 5,
               onTap: (index) {
                 setState(() {
                   _activeTab = index == 0
@@ -433,8 +442,10 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                           : index == 2
                               ? 'job_applications'
                               : index == 3
-                                  ? 'testimonials'
-                                  : 'searches';
+                                  ? 'registered_users'
+                                  : index == 4
+                                      ? 'testimonials'
+                                      : 'searches';
                 });
               },
               selectedItemColor: widget.themeColor,
@@ -456,6 +467,10 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                 BottomNavigationBarItem(
                   icon: Icon(Icons.assignment_turned_in_rounded),
                   label: 'Apps',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.people_rounded),
+                  label: 'Users',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.reviews_rounded),
@@ -2425,6 +2440,306 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildRegisteredUsersPanel() {
+    final isMobilePanel = MediaQuery.of(context).size.width < 600;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Panel Header
+        Padding(
+          padding: EdgeInsets.all(isMobilePanel ? 12 : 24),
+          child: Text(
+            'Registered Candidates',
+            style: GoogleFonts.notoSans(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+
+        // List of registered users
+        Expanded(
+          child: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: FirebaseService.instance.getRegisteredUsersStream(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('Error loading registered users: ${snapshot.error}'));
+              }
+              final users = snapshot.data ?? [];
+              if (users.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.people_outline_rounded, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No registered candidates found',
+                        style: GoogleFonts.notoSans(fontSize: 16, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: EdgeInsets.symmetric(horizontal: isMobilePanel ? 12 : 24),
+                itemCount: users.length,
+                itemBuilder: (context, index) {
+                  final user = users[index];
+                  final id = user['id'] ?? '';
+                  final name = user['name'] ?? '';
+                  final phone = user['phone'] ?? '';
+                  final email = user['email'] ?? '';
+                  final languages = List<String>.from(user['languages'] ?? []);
+                  final pastJobTitle = user['pastJobTitle'] ?? '';
+                  final pastJobDescription = user['pastJobDescription'] ?? '';
+                  final currentJobTitle = user['currentJobTitle'] ?? '';
+                  final currentJobDescription = user['currentJobDescription'] ?? '';
+                  final highestEducation = user['highestEducation'] ?? '';
+                  final skills = List<String>.from(user['skills'] ?? []);
+                                  final aadharCardUrl = user['aadharCardUrl'] ?? '';
+                  final aadharCardFileName = user['aadharCardFileName'] ?? '';
+                  final resumeUrl = user['resumeUrl'] ?? '';
+                  final resumeFileName = user['resumeFileName'] ?? '';
+
+                  String formattedDate = '';
+                  if (user['registeredAt'] != null) {
+                    try {
+                      final date = user['registeredAt'] is DateTime
+                          ? user['registeredAt']
+                          : (user['registeredAt'] as dynamic).toDate();
+                      formattedDate = '${date.day}/${date.month}/${date.year}';
+                    } catch (_) {}
+                  }
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.grey[200]!),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(isMobilePanel ? 14 : 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: widget.themeColor.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(Icons.person_outline_rounded, color: widget.themeColor, size: 28),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: GoogleFonts.notoSans(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Education: ${highestEducation.isNotEmpty ? highestEducation : "N/A"}',
+                                      style: GoogleFonts.notoSans(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: widget.themeColor,
+                                      ),
+                                    ),
+                                    if (formattedDate.isNotEmpty)
+                                      Text(
+                                        'Registered On: $formattedDate',
+                                        style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black38),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded),
+                                color: Colors.redAccent,
+                                tooltip: 'Delete Candidate',
+                                onPressed: () => _confirmDeleteRegisteredUser(id),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                          
+                          // Grid details
+                          Wrap(
+                            spacing: 24,
+                            runSpacing: 12,
+                            children: [
+                              _buildAppDetailField(Icons.phone_outlined, 'Phone', phone),
+                              _buildAppDetailField(Icons.email_outlined, 'Email', email.isNotEmpty ? email : "N/A"),
+                              if (aadharCardFileName.isNotEmpty)
+                                _buildAppDetailField(Icons.image_rounded, 'Aadhar Card ID', aadharCardFileName, isLink: true, resumeUrl: aadharCardUrl),
+                              if (resumeFileName.isNotEmpty)
+                                _buildAppDetailField(Icons.attach_file_rounded, 'Resume', resumeFileName, isLink: true, resumeUrl: resumeUrl),
+                            ],
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          if (languages.isNotEmpty) ...[
+                            Text(
+                              'Languages Speak:',
+                              style: GoogleFonts.notoSans(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: languages.map((lang) => Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(lang, style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black87)),
+                              )).toList(),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+
+                          if (skills.isNotEmpty) ...[
+                            Text(
+                              'Skills:',
+                              style: GoogleFonts.notoSans(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: skills.map((skill) => Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: widget.themeColor.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(skill, style: GoogleFonts.notoSans(fontSize: 12, color: widget.themeColor, fontWeight: FontWeight.w600)),
+                              )).toList(),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+
+                          if (currentJobTitle.isNotEmpty || currentJobDescription.isNotEmpty) ...[
+                            _buildEmploymentDetail(
+                              label: 'Current Employment',
+                              title: currentJobTitle,
+                              desc: currentJobDescription,
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+
+                          if (pastJobTitle.isNotEmpty || pastJobDescription.isNotEmpty) ...[
+                            _buildEmploymentDetail(
+                              label: 'Past Employment',
+                              title: pastJobTitle,
+                              desc: pastJobDescription,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmploymentDetail({required String label, required String title, required String desc}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.notoSans(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[200]!),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (title.isNotEmpty)
+                Text(
+                  title,
+                  style: GoogleFonts.notoSans(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                ),
+              if (title.isNotEmpty && desc.isNotEmpty) const SizedBox(height: 6),
+              if (desc.isNotEmpty)
+                Text(
+                  desc,
+                  style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54, height: 1.4),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _confirmDeleteRegisteredUser(String id) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Delete Candidate Registration', style: GoogleFonts.notoSans(fontWeight: FontWeight.bold)),
+          content: Text('Are you sure you want to permanently delete this candidate profile? This action cannot be undone.', style: GoogleFonts.notoSans()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: GoogleFonts.notoSans(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await FirebaseService.instance.deleteRegisteredUser(id);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Candidate registration deleted successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              child: Text('Delete', style: GoogleFonts.notoSans(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
     );
   }
 

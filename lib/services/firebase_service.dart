@@ -42,6 +42,10 @@ class FirebaseService {
   final StreamController<List<JobApplication>> _jobApplicationsController =
       StreamController<List<JobApplication>>.broadcast();
 
+  final List<Map<String, dynamic>> _localRegisteredUsers = [];
+  final StreamController<List<Map<String, dynamic>>> _registeredUsersController =
+      StreamController<List<Map<String, dynamic>>>.broadcast();
+
   void _initFallbackTestimonials() {
     _localTestimonials.addAll([
       Testimonial(
@@ -1072,7 +1076,189 @@ class FirebaseService {
       return 'application/msword';
     } else if (lower.endsWith('.docx')) {
       return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    } else if (lower.endsWith('.png')) {
+      return 'image/png';
+    } else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+      return 'image/jpeg';
+    } else if (lower.endsWith('.gif')) {
+      return 'image/gif';
     }
     return 'application/octet-stream';
+  }
+
+  // --- REGISTERED USERS METHODS ---
+
+  Future<void> registerUser({
+    required String name,
+    required String phone,
+    required String email,
+    required List<String> languages,
+    required String pastJobTitle,
+    required String pastJobDescription,
+    required String currentJobTitle,
+    required String currentJobDescription,
+    required String highestEducation,
+    required List<String> skills,
+    required String idProofFileName,
+    required Uint8List idProofFileBytes,
+    String? resumeFileName,
+    Uint8List? resumeFileBytes,
+  }) async {
+    String idProofUrl = '';
+    String resumeUrl = '';
+
+    if (isFirebaseInitialized) {
+      try {
+        // Upload ID Proof (Aadhar card) to Firebase Storage
+        final storageRef = FirebaseStorage.instance
+            .ref()
+            .child('aadhar_cards/${DateTime.now().millisecondsSinceEpoch}_$idProofFileName');
+        
+        final uploadTask = storageRef.putData(
+          idProofFileBytes,
+          SettableMetadata(contentType: _getContentType(idProofFileName)),
+        );
+        
+        final snapshot = await uploadTask.timeout(const Duration(seconds: 30));
+        idProofUrl = await snapshot.ref.getDownloadURL();
+      } catch (e) {
+        print('Firebase Storage ID proof upload failed: $e');
+        idProofUrl = 'https://demo-storage.example.com/aadhar_cards/$idProofFileName';
+      }
+
+      // Upload optional resume to Firebase Storage if provided
+      if (resumeFileName != null && resumeFileBytes != null) {
+        try {
+          final storageRef = FirebaseStorage.instance
+              .ref()
+              .child('resumes/${DateTime.now().millisecondsSinceEpoch}_$resumeFileName');
+          
+          final uploadTask = storageRef.putData(
+            resumeFileBytes,
+            SettableMetadata(contentType: _getContentType(resumeFileName)),
+          );
+          
+          final snapshot = await uploadTask.timeout(const Duration(seconds: 30));
+          resumeUrl = await snapshot.ref.getDownloadURL();
+        } catch (e) {
+          print('Firebase Storage optional resume upload failed: $e');
+          resumeUrl = 'https://demo-storage.example.com/resumes/$resumeFileName';
+        }
+      }
+    } else {
+      idProofUrl = 'https://demo-storage.example.com/aadhar_cards/$idProofFileName';
+      if (resumeFileName != null) {
+        resumeUrl = 'https://demo-storage.example.com/resumes/$resumeFileName';
+      }
+    }
+
+    final userData = {
+      'name': name,
+      'phone': phone,
+      'email': email,
+      'languages': languages,
+      'pastJobTitle': pastJobTitle,
+      'pastJobDescription': pastJobDescription,
+      'currentJobTitle': currentJobTitle,
+      'currentJobDescription': currentJobDescription,
+      'highestEducation': highestEducation,
+      'skills': skills,
+      'aadharCardUrl': idProofUrl,
+      'aadharCardFileName': idProofFileName,
+      'resumeUrl': resumeUrl,
+      'resumeFileName': resumeFileName ?? '',
+      'registeredAt': FieldValue.serverTimestamp(),
+    };
+
+    if (isFirebaseInitialized) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('registered users')
+            .add(userData)
+            .timeout(const Duration(seconds: 8));
+        return;
+      } catch (dbError) {
+        print('Firestore user register failed ($dbError). Saving to local cache.');
+      }
+    }
+
+    // Fallback cache logic
+    final localItem = {
+      'id': 'local_${DateTime.now().millisecondsSinceEpoch}',
+      ...userData,
+      'registeredAt': DateTime.now(),
+    };
+    _localRegisteredUsers.insert(0, localItem);
+    _registeredUsersController.add(List.from(_localRegisteredUsers));
+  }
+
+  Stream<List<Map<String, dynamic>>> getRegisteredUsersStream() async* {
+    if (isFirebaseInitialized) {
+      bool hasEmitted = false;
+      try {
+        final firestoreStream = FirebaseFirestore.instance
+            .collection('registered users')
+            .orderBy('registeredAt', descending: true)
+            .snapshots()
+            .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => {
+                    'id': doc.id,
+                    ...doc.data(),
+                  })
+              .toList();
+        });
+
+        await for (final list in firestoreStream.timeout(
+          const Duration(seconds: 3),
+          onTimeout: (sink) {
+            throw TimeoutException('Firestore timeout');
+          },
+        )) {
+          hasEmitted = true;
+          yield list;
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Firestore getRegisteredUsersStream failed ($e). Streaming local cache.');
+        }
+        if (!hasEmitted) {
+          yield List.from(_localRegisteredUsers);
+          yield* _registeredUsersController.stream;
+        }
+      }
+    } else {
+      yield List.from(_localRegisteredUsers);
+      yield* _registeredUsersController.stream;
+    }
+  }
+
+  Future<void> deleteRegisteredUser(String id) async {
+    try {
+      bool deletedFromFirestore = false;
+      if (isFirebaseInitialized) {
+        try {
+          await FirebaseFirestore.instance
+              .collection('registered users')
+              .doc(id)
+              .delete()
+              .timeout(const Duration(seconds: 4));
+          deletedFromFirestore = true;
+        } catch (dbError) {
+          if (kDebugMode) {
+            print('Firestore deleteRegisteredUser failed ($dbError). Modifying local cache.');
+          }
+        }
+      }
+
+      if (!deletedFromFirestore || !isFirebaseInitialized) {
+        _localRegisteredUsers.removeWhere((item) => item['id'] == id);
+        _registeredUsersController.add(List.from(_localRegisteredUsers));
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error deleting registered user: $e');
+      }
+    }
   }
 }

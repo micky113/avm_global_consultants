@@ -349,10 +349,10 @@ class _JobsPageState extends State<JobsPage> {
               Image.asset(
                 'images/logo.png',
                 fit: BoxFit.contain,
-                width: isMobile ? 45 : 55,
-                height: isMobile ? 45 : 55,
+                width: isMobile ? 40 : 54,
+                height: isMobile ? 28 : 38,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 6),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -369,8 +369,8 @@ class _JobsPageState extends State<JobsPage> {
                     'Consultants',
                     style: GoogleFonts.notoSans(
                       fontWeight: FontWeight.w500,
-                      fontSize: isMobile ? 12 : 13,
-                      color: Colors.black87,
+                      fontSize: isMobile ? 11 : 12,
+                      color: Colors.black54,
                     ),
                   ),
                 ],
