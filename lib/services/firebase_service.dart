@@ -643,7 +643,7 @@ class FirebaseService {
   }
 
   // Get Jobs Stream (Realtime Resilient)
-  Stream<List<Job>> getJobsStream() async* {
+  Stream<List<Job>> getJobsStream({String? employerId}) async* {
     if (isFirebaseInitialized) {
       bool hasEmitted = false;
       try {
@@ -652,9 +652,13 @@ class FirebaseService {
             .orderBy('postedAt', descending: true)
             .snapshots()
             .map((snapshot) {
-          return snapshot.docs
+          final list = snapshot.docs
               .map((doc) => Job.fromMap(doc.id, doc.data()))
               .toList();
+          if (employerId != null && employerId.isNotEmpty) {
+            return list.where((job) => job.employerId == employerId).toList();
+          }
+          return list;
         });
 
         await for (final list in firestoreStream.timeout(
@@ -671,13 +675,25 @@ class FirebaseService {
           print('Firestore getJobsStream failed or timed out ($e). Streaming local mock jobs.');
         }
         if (!hasEmitted) {
-          yield List.from(_localJobs);
-          yield* _jobsController.stream;
+          final localList = List<Job>.from(_localJobs);
+          if (employerId != null && employerId.isNotEmpty) {
+            yield localList.where((j) => j.employerId == employerId).toList();
+            yield* _jobsController.stream.map((list) => list.where((j) => j.employerId == employerId).toList());
+          } else {
+            yield localList;
+            yield* _jobsController.stream;
+          }
         }
       }
     } else {
-      yield List.from(_localJobs);
-      yield* _jobsController.stream;
+      final localList = List<Job>.from(_localJobs);
+      if (employerId != null && employerId.isNotEmpty) {
+        yield localList.where((j) => j.employerId == employerId).toList();
+        yield* _jobsController.stream.map((list) => list.where((j) => j.employerId == employerId).toList());
+      } else {
+        yield localList;
+        yield* _jobsController.stream;
+      }
     }
   }
 
@@ -715,6 +731,7 @@ class FirebaseService {
         email: job.email,
         link: job.link,
         name: job.name,
+        employerId: job.employerId,
       );
 
       final index = _localJobs.indexWhere((j) => j.id == newJob.id);
@@ -1099,31 +1116,52 @@ class FirebaseService {
     required String currentJobDescription,
     required String highestEducation,
     required List<String> skills,
-    required String idProofFileName,
-    required Uint8List idProofFileBytes,
+    required String idProofFrontFileName,
+    required Uint8List idProofFrontFileBytes,
+    required String idProofBackFileName,
+    required Uint8List idProofBackFileBytes,
     String? resumeFileName,
     Uint8List? resumeFileBytes,
   }) async {
-    String idProofUrl = '';
+    String idProofFrontUrl = '';
+    String idProofBackUrl = '';
     String resumeUrl = '';
 
     if (isFirebaseInitialized) {
       try {
-        // Upload ID Proof (Aadhar card) to Firebase Storage
-        final storageRef = FirebaseStorage.instance
+        // Upload ID Proof Front (Aadhar card) to Firebase Storage
+        final storageRefFront = FirebaseStorage.instance
             .ref()
-            .child('aadhar_cards/${DateTime.now().millisecondsSinceEpoch}_$idProofFileName');
+            .child('aadhar_cards/front_${DateTime.now().millisecondsSinceEpoch}_$idProofFrontFileName');
         
-        final uploadTask = storageRef.putData(
-          idProofFileBytes,
-          SettableMetadata(contentType: _getContentType(idProofFileName)),
+        final uploadTaskFront = storageRefFront.putData(
+          idProofFrontFileBytes,
+          SettableMetadata(contentType: _getContentType(idProofFrontFileName)),
         );
         
-        final snapshot = await uploadTask.timeout(const Duration(seconds: 30));
-        idProofUrl = await snapshot.ref.getDownloadURL();
+        final snapshotFront = await uploadTaskFront.timeout(const Duration(seconds: 30));
+        idProofFrontUrl = await snapshotFront.ref.getDownloadURL();
       } catch (e) {
-        print('Firebase Storage ID proof upload failed: $e');
-        idProofUrl = 'https://demo-storage.example.com/aadhar_cards/$idProofFileName';
+        print('Firebase Storage Front ID proof upload failed: $e');
+        idProofFrontUrl = 'https://demo-storage.example.com/aadhar_cards/front_$idProofFrontFileName';
+      }
+
+      try {
+        // Upload ID Proof Back (Aadhar card) to Firebase Storage
+        final storageRefBack = FirebaseStorage.instance
+            .ref()
+            .child('aadhar_cards/back_${DateTime.now().millisecondsSinceEpoch}_$idProofBackFileName');
+        
+        final uploadTaskBack = storageRefBack.putData(
+          idProofBackFileBytes,
+          SettableMetadata(contentType: _getContentType(idProofBackFileName)),
+        );
+        
+        final snapshotBack = await uploadTaskBack.timeout(const Duration(seconds: 30));
+        idProofBackUrl = await snapshotBack.ref.getDownloadURL();
+      } catch (e) {
+        print('Firebase Storage Back ID proof upload failed: $e');
+        idProofBackUrl = 'https://demo-storage.example.com/aadhar_cards/back_$idProofBackFileName';
       }
 
       // Upload optional resume to Firebase Storage if provided
@@ -1146,7 +1184,8 @@ class FirebaseService {
         }
       }
     } else {
-      idProofUrl = 'https://demo-storage.example.com/aadhar_cards/$idProofFileName';
+      idProofFrontUrl = 'https://demo-storage.example.com/aadhar_cards/front_$idProofFrontFileName';
+      idProofBackUrl = 'https://demo-storage.example.com/aadhar_cards/back_$idProofBackFileName';
       if (resumeFileName != null) {
         resumeUrl = 'https://demo-storage.example.com/resumes/$resumeFileName';
       }
@@ -1163,8 +1202,13 @@ class FirebaseService {
       'currentJobDescription': currentJobDescription,
       'highestEducation': highestEducation,
       'skills': skills,
-      'aadharCardUrl': idProofUrl,
-      'aadharCardFileName': idProofFileName,
+      'aadharCardFrontUrl': idProofFrontUrl,
+      'aadharCardFrontFileName': idProofFrontFileName,
+      'aadharCardBackUrl': idProofBackUrl,
+      'aadharCardBackFileName': idProofBackFileName,
+      // Maintain old fields for backwards compatibility
+      'aadharCardUrl': idProofFrontUrl,
+      'aadharCardFileName': idProofFrontFileName,
       'resumeUrl': resumeUrl,
       'resumeFileName': resumeFileName ?? '',
       'registeredAt': FieldValue.serverTimestamp(),

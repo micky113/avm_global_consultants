@@ -81,4 +81,5 @@ class MyAppRouteConstants {
   static const String locationsRouteName = 'locations';
   static const String contactUsRouteName = 'contact-us';
   static const String registerRouteName = 'register';
+  static const String employerRouteName = 'employer';
 }

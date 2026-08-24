@@ -33,11 +33,16 @@ class _RegisterPageState extends State<RegisterPage> {
   final List<String> _languages = [];
   final List<String> _skills = [];
 
-  // ID Proof Selection
-  Uint8List? _idProofBytes;
-  String? _idProofName;
-  bool _isPickingFile = false;
-  String? _idProofError;
+  // ID Proof Selection (Front & Back)
+  Uint8List? _frontBytes;
+  String? _frontName;
+  bool _isPickingFront = false;
+  String? _frontError;
+
+  Uint8List? _backBytes;
+  String? _backName;
+  bool _isPickingBack = false;
+  String? _backError;
 
   // Optional Resume Selection
   Uint8List? _resumeBytes;
@@ -47,6 +52,77 @@ class _RegisterPageState extends State<RegisterPage> {
   // Page States
   bool _isSubmitting = false;
   bool _isSuccess = false;
+
+  PreferredSizeWidget _buildAppBar(BuildContext context, bool isMobile, Color themeColor, Color darkBlue) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(80.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
+          titleSpacing: isMobile ? 8.0 : 20.0,
+          leading: Padding(
+            padding: const EdgeInsets.only(left: 12.0),
+            child: IconButton(
+              tooltip: 'Back to Home',
+              icon: Icon(Icons.arrow_back_rounded, color: darkBlue, size: 24),
+              onPressed: () => context.go('/'),
+            ),
+          ),
+          title: Row(
+            children: [
+              Image.asset(
+                'images/logo.png',
+                fit: BoxFit.contain,
+                width: isMobile ? 40 : 54,
+                height: isMobile ? 28 : 38,
+                errorBuilder: (context, error, stackTrace) => Icon(
+                  Icons.business,
+                  color: themeColor,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'AVM Global',
+                    style: GoogleFonts.notoSans(
+                      fontSize: isMobile ? 16 : 18,
+                      fontWeight: FontWeight.bold,
+                      color: themeColor,
+                    ),
+                  ),
+                  Text(
+                    'Consultants',
+                    style: GoogleFonts.notoSans(
+                      fontWeight: FontWeight.w500,
+                      fontSize: isMobile ? 11 : 12,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -63,11 +139,11 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
-  // Pick Aadhar Card Image
-  Future<void> _pickIdProof() async {
+  // Pick Front Photo
+  Future<void> _pickFront() async {
     setState(() {
-      _isPickingFile = true;
-      _idProofError = null;
+      _isPickingFront = true;
+      _frontError = null;
     });
 
     try {
@@ -78,24 +154,60 @@ class _RegisterPageState extends State<RegisterPage> {
 
       if (result != null && result.files.single.bytes != null) {
         setState(() {
-          _idProofBytes = result.files.single.bytes;
-          _idProofName = result.files.single.name;
+          _frontBytes = result.files.single.bytes;
+          _frontName = result.files.single.name;
         });
       }
     } catch (e) {
       setState(() {
-        _idProofError = 'Error picking file: $e';
+        _frontError = 'Error picking file: $e';
       });
     } finally {
-      setState(() => _isPickingFile = false);
+      setState(() => _isPickingFront = false);
     }
   }
 
-  void _clearIdProof() {
+  void _clearFront() {
     setState(() {
-      _idProofBytes = null;
-      _idProofName = null;
-      _idProofError = null;
+      _frontBytes = null;
+      _frontName = null;
+      _frontError = null;
+    });
+  }
+
+  // Pick Back Photo
+  Future<void> _pickBack() async {
+    setState(() {
+      _isPickingBack = true;
+      _backError = null;
+    });
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.single.bytes != null) {
+        setState(() {
+          _backBytes = result.files.single.bytes;
+          _backName = result.files.single.name;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _backError = 'Error picking file: $e';
+      });
+    } finally {
+      setState(() => _isPickingBack = false);
+    }
+  }
+
+  void _clearBack() {
+    setState(() {
+      _backBytes = null;
+      _backName = null;
+      _backError = null;
     });
   }
 
@@ -163,11 +275,17 @@ class _RegisterPageState extends State<RegisterPage> {
     // Check form inputs
     final isFormValid = _formKey.currentState?.validate() ?? false;
     
-    // Check ID proof (Compulsory)
+    // Check ID proof Front & Back (Compulsory)
     bool isIdProofValid = true;
-    if (_idProofBytes == null || _idProofName == null) {
+    if (_frontBytes == null || _frontName == null) {
       setState(() {
-        _idProofError = 'Please upload a photo of your Aadhar card (ID Proof)';
+        _frontError = 'Please upload the front photo of your Aadhar card';
+      });
+      isIdProofValid = false;
+    }
+    if (_backBytes == null || _backName == null) {
+      setState(() {
+        _backError = 'Please upload the back photo of your Aadhar card';
       });
       isIdProofValid = false;
     }
@@ -190,8 +308,10 @@ class _RegisterPageState extends State<RegisterPage> {
         currentJobDescription: _currentJobDescController.text.trim(),
         highestEducation: _highestEducationController.text.trim(),
         skills: _skills,
-        idProofFileName: _idProofName!,
-        idProofFileBytes: _idProofBytes!,
+        idProofFrontFileName: _frontName!,
+        idProofFrontFileBytes: _frontBytes!,
+        idProofBackFileName: _backName!,
+        idProofBackFileBytes: _backBytes!,
         resumeFileName: _resumeName,
         resumeFileBytes: _resumeBytes,
       );
@@ -294,74 +414,119 @@ class _RegisterPageState extends State<RegisterPage> {
       );
     }
 
-    return AboutUsBasePage(
-      title: 'Register as Candidate',
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 850),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Complete Your Candidate Profile',
-                  style: GoogleFonts.notoSans(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: darkBlue,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Please fill out all mandatory fields to register with AVM Global Consultants. Make sure to provide a valid phone number and Aadhar card image.',
-                  style: GoogleFonts.notoSans(
-                    fontSize: 14,
-                    color: Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 32),
+    final screenSize = MediaQuery.of(context).size;
+    final isMobileView = screenSize.width < 700;
 
-                // Card Section: Personal Information
-                _buildCardSection(
-                  title: '1. Personal Information',
-                  icon: Icons.person_rounded,
-                  themeColor: themeColor,
-                  darkBlue: darkBlue,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildTextField(
-                            controller: _nameController,
-                            label: 'Full Name (Compulsory)',
-                            icon: Icons.person_outline_rounded,
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'Full name is required';
-                              }
-                              return null;
-                            },
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: _buildAppBar(context, isMobileView, themeColor, darkBlue),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobileView ? 12.0 : 40.0,
+              vertical: 24.0,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 850),
+                child: Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  child: Padding(
+                    padding: EdgeInsets.all(isMobileView ? 16.0 : 32.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Complete Your Candidate Profile',
+                            style: GoogleFonts.notoSans(
+                              fontSize: isMobileView ? 20 : 26,
+                              fontWeight: FontWeight.bold,
+                              color: darkBlue,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildTextField(
-                            controller: _phoneController,
-                            label: 'Phone Number (Compulsory)',
-                            icon: Icons.phone_outlined,
-                            keyboardType: TextInputType.phone,
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'Phone number is required';
-                              }
-                              return null;
-                            },
+                          const SizedBox(height: 8),
+                          Text(
+                            'Please fill out all mandatory fields to register with AVM Global Consultants. Make sure to provide a valid phone number and Aadhar card image.',
+                            style: GoogleFonts.notoSans(
+                              fontSize: 14,
+                              color: Colors.black54,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
+                          const SizedBox(height: 32),
+
+                          // Card Section: Personal Information
+                          _buildCardSection(
+                            title: '1. Personal Information',
+                            icon: Icons.person_rounded,
+                            themeColor: themeColor,
+                            darkBlue: darkBlue,
+                            children: [
+                              isMobileView
+                                  ? Column(
+                                      children: [
+                                        _buildTextField(
+                                          controller: _nameController,
+                                          label: 'Full Name (Compulsory)',
+                                          icon: Icons.person_outline_rounded,
+                                          validator: (val) {
+                                            if (val == null || val.trim().isEmpty) {
+                                              return 'Full name is required';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                        const SizedBox(height: 16),
+                                        _buildTextField(
+                                          controller: _phoneController,
+                                          label: 'Phone Number (Compulsory)',
+                                          icon: Icons.phone_outlined,
+                                          keyboardType: TextInputType.phone,
+                                          validator: (val) {
+                                            if (val == null || val.trim().isEmpty) {
+                                              return 'Phone number is required';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                      ],
+                                    )
+                                  : Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildTextField(
+                                            controller: _nameController,
+                                            label: 'Full Name (Compulsory)',
+                                            icon: Icons.person_outline_rounded,
+                                            validator: (val) {
+                                              if (val == null || val.trim().isEmpty) {
+                                                return 'Full name is required';
+                                              }
+                                              return null;
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: _buildTextField(
+                                            controller: _phoneController,
+                                            label: 'Phone Number (Compulsory)',
+                                            icon: Icons.phone_outlined,
+                                            keyboardType: TextInputType.phone,
+                                            validator: (val) {
+                                              if (val == null || val.trim().isEmpty) {
+                                                return 'Phone number is required';
+                                              }
+                                              return null;
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                              const SizedBox(height: 20),
                     _buildTextField(
                       controller: _emailController,
                       label: 'Email ID',
@@ -562,145 +727,291 @@ class _RegisterPageState extends State<RegisterPage> {
                   darkBlue: darkBlue,
                   children: [
                     Text(
-                      'Please upload a clear scan or picture of your Aadhar Card. Only JPG, JPEG, and PNG formats are accepted.',
+                      'Please upload clear scans or pictures of both the front and back of your Aadhar Card. Only JPG, JPEG, and PNG formats are accepted.',
                       style: GoogleFonts.notoSans(
                         fontSize: 14,
                         color: Colors.black54,
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: _isPickingFile ? null : _pickIdProof,
-                        child: Container(
-                          width: double.infinity,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            color: _idProofBytes != null
-                                ? Colors.green.withOpacity(0.02)
-                                : Colors.blue.withOpacity(0.01),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: _idProofError != null
-                                  ? Colors.redAccent
-                                  : _idProofBytes != null
-                                      ? Colors.green.withOpacity(0.4)
-                                      : themeColor.withOpacity(0.3),
-                              width: 2,
-                              style: BorderStyle.solid,
-                            ),
-                          ),
-                          child: _idProofBytes != null
-                              ? Stack(
-                                  children: [
-                                    Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(10),
-                                            child: Image.memory(
-                                              _idProofBytes!,
-                                              width: 200,
-                                              height: 110,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (c, e, s) => Container(
-                                                color: Colors.grey[200],
-                                                width: 200,
-                                                height: 110,
-                                                child: const Icon(Icons.image_rounded, size: 40, color: Colors.grey),
+                    const SizedBox(height: 24),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isMobileUpload = constraints.maxWidth < 600;
+                        return Flex(
+                          direction: isMobileUpload ? Axis.vertical : Axis.horizontal,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // FRONT PHOTO
+                            Expanded(
+                              flex: isMobileUpload ? 0 : 1,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Aadhar Front Photo (Compulsory)',
+                                    style: GoogleFonts.notoSans(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: darkBlue,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: GestureDetector(
+                                      onTap: _isPickingFront ? null : _pickFront,
+                                      child: Container(
+                                        width: double.infinity,
+                                        height: 180,
+                                        decoration: BoxDecoration(
+                                          color: _frontBytes != null
+                                              ? Colors.green.withOpacity(0.02)
+                                              : Colors.blue.withOpacity(0.01),
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: _frontError != null
+                                                ? Colors.redAccent
+                                                : _frontBytes != null
+                                                    ? Colors.green.withOpacity(0.4)
+                                                    : themeColor.withOpacity(0.3),
+                                            width: 2,
+                                            style: BorderStyle.solid,
+                                          ),
+                                        ),
+                                        child: _frontBytes != null
+                                            ? Stack(
+                                                children: [
+                                                  Center(
+                                                    child: Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        ClipRRect(
+                                                          borderRadius: BorderRadius.circular(10),
+                                                          child: Image.memory(
+                                                            _frontBytes!,
+                                                            width: 160,
+                                                            height: 90,
+                                                            fit: BoxFit.cover,
+                                                            errorBuilder: (c, e, s) => Container(
+                                                              color: Colors.grey[200],
+                                                              width: 160,
+                                                              height: 90,
+                                                              child: const Icon(Icons.image_rounded, size: 30, color: Colors.grey),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(height: 10),
+                                                        Padding(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                                                          child: Text(
+                                                            _frontName ?? 'Front Uploaded',
+                                                            style: GoogleFonts.notoSans(
+                                                              fontWeight: FontWeight.bold,
+                                                              color: Colors.green[800],
+                                                              fontSize: 12,
+                                                            ),
+                                                            maxLines: 1,
+                                                            overflow: TextOverflow.ellipsis,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  Positioned(
+                                                    top: 8,
+                                                    right: 8,
+                                                    child: IconButton(
+                                                      icon: const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 20),
+                                                      style: IconButton.styleFrom(
+                                                        backgroundColor: Colors.white,
+                                                        elevation: 2,
+                                                      ),
+                                                      onPressed: _clearFront,
+                                                    ),
+                                                  ),
+                                                ],
+                                              )
+                                            : Center(
+                                                child: Column(
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  children: [
+                                                    if (_isPickingFront) ...[
+                                                      const CircularProgressIndicator(),
+                                                      const SizedBox(height: 12),
+                                                      Text(
+                                                        'Opening...',
+                                                        style: GoogleFonts.notoSans(color: Colors.black54, fontSize: 13),
+                                                      ),
+                                                    ] else ...[
+                                                      Icon(
+                                                        Icons.cloud_upload_outlined,
+                                                        size: 36,
+                                                        color: themeColor.withOpacity(0.8),
+                                                      ),
+                                                      const SizedBox(height: 12),
+                                                      Text(
+                                                        'Upload Front Photo',
+                                                        style: GoogleFonts.notoSans(
+                                                          fontSize: 14,
+                                                          fontWeight: FontWeight.w600,
+                                                          color: themeColor,
+                                                        ),
+                                                      ),
+                                                    ]
+                                                  ],
+                                                ),
                                               ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 10),
-                                          Text(
-                                            _idProofName ?? 'Image Uploaded',
-                                            style: GoogleFonts.notoSans(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.green[800],
-                                              fontSize: 13,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
                                       ),
                                     ),
-                                    Positioned(
-                                      top: 12,
-                                      right: 12,
-                                      child: IconButton(
-                                        icon: const Icon(Icons.delete_rounded, color: Colors.redAccent),
-                                        style: IconButton.styleFrom(
-                                          backgroundColor: Colors.white,
-                                          elevation: 2,
-                                        ),
-                                        onPressed: _clearIdProof,
-                                      ),
+                                  ),
+                                  if (_frontError != null) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      _frontError!,
+                                      style: GoogleFonts.notoSans(color: Colors.redAccent, fontSize: 12),
                                     ),
                                   ],
-                                )
-                              : Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      if (_isPickingFile) ...[
-                                        const CircularProgressIndicator(),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          'Opening File Picker...',
-                                          style: GoogleFonts.notoSans(color: Colors.black54),
-                                        ),
-                                      ] else ...[
-                                        Icon(
-                                          Icons.cloud_upload_outlined,
-                                          size: 48,
-                                          color: themeColor.withOpacity(0.8),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          'Click here to upload Aadhar Card',
-                                          style: GoogleFonts.notoSans(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            color: themeColor,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          'JPG, JPEG, or PNG',
-                                          style: GoogleFonts.notoSans(
-                                            fontSize: 12,
-                                            color: Colors.black38,
-                                          ),
-                                        ),
-                                      ]
-                                    ],
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ),
-                    if (_idProofError != null) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 18),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _idProofError!,
-                              style: GoogleFonts.notoSans(
-                                color: Colors.redAccent,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
+                                ],
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            if (isMobileUpload) const SizedBox(height: 20) else const SizedBox(width: 24),
+                            // BACK PHOTO
+                            Expanded(
+                              flex: isMobileUpload ? 0 : 1,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Aadhar Back Photo (Compulsory)',
+                                    style: GoogleFonts.notoSans(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: darkBlue,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: GestureDetector(
+                                      onTap: _isPickingBack ? null : _pickBack,
+                                      child: Container(
+                                        width: double.infinity,
+                                        height: 180,
+                                        decoration: BoxDecoration(
+                                          color: _backBytes != null
+                                              ? Colors.green.withOpacity(0.02)
+                                              : Colors.blue.withOpacity(0.01),
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: _backError != null
+                                                ? Colors.redAccent
+                                                : _backBytes != null
+                                                    ? Colors.green.withOpacity(0.4)
+                                                    : themeColor.withOpacity(0.3),
+                                            width: 2,
+                                            style: BorderStyle.solid,
+                                          ),
+                                        ),
+                                        child: _backBytes != null
+                                            ? Stack(
+                                                children: [
+                                                  Center(
+                                                    child: Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        ClipRRect(
+                                                          borderRadius: BorderRadius.circular(10),
+                                                          child: Image.memory(
+                                                            _backBytes!,
+                                                            width: 160,
+                                                            height: 90,
+                                                            fit: BoxFit.cover,
+                                                            errorBuilder: (c, e, s) => Container(
+                                                              color: Colors.grey[200],
+                                                              width: 160,
+                                                              height: 90,
+                                                              child: const Icon(Icons.image_rounded, size: 30, color: Colors.grey),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(height: 10),
+                                                        Padding(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                                                          child: Text(
+                                                            _backName ?? 'Back Uploaded',
+                                                            style: GoogleFonts.notoSans(
+                                                              fontWeight: FontWeight.bold,
+                                                              color: Colors.green[800],
+                                                              fontSize: 12,
+                                                            ),
+                                                            maxLines: 1,
+                                                            overflow: TextOverflow.ellipsis,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  Positioned(
+                                                    top: 8,
+                                                    right: 8,
+                                                    child: IconButton(
+                                                      icon: const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 20),
+                                                      style: IconButton.styleFrom(
+                                                        backgroundColor: Colors.white,
+                                                        elevation: 2,
+                                                      ),
+                                                      onPressed: _clearBack,
+                                                    ),
+                                                  ),
+                                                ],
+                                              )
+                                            : Center(
+                                                child: Column(
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  children: [
+                                                    if (_isPickingBack) ...[
+                                                      const CircularProgressIndicator(),
+                                                      const SizedBox(height: 12),
+                                                      Text(
+                                                        'Opening...',
+                                                        style: GoogleFonts.notoSans(color: Colors.black54, fontSize: 13),
+                                                      ),
+                                                    ] else ...[
+                                                      Icon(
+                                                        Icons.cloud_upload_outlined,
+                                                        size: 36,
+                                                        color: themeColor.withOpacity(0.8),
+                                                      ),
+                                                      const SizedBox(height: 12),
+                                                      Text(
+                                                        'Upload Back Photo',
+                                                        style: GoogleFonts.notoSans(
+                                                          fontSize: 14,
+                                                          fontWeight: FontWeight.w600,
+                                                          color: themeColor,
+                                                        ),
+                                                      ),
+                                                    ]
+                                                  ],
+                                                ),
+                                              ),
+                                      ),
+                                    ),
+                                  ),
+                                  if (_backError != null) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      _backError!,
+                                      style: GoogleFonts.notoSans(color: Colors.redAccent, fontSize: 12),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -877,7 +1188,12 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+),
+),
+),
+);
   }
 
   // Visual helper: Form cards

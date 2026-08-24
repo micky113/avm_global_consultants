@@ -2232,6 +2232,7 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                       email: emailCtrl.text.trim(),
                       link: linkCtrl.text.trim(),
                       name: nameCtrl.text.trim(),
+                      employerId: job?.employerId ?? 'admin',
                     );
 
                     try {
@@ -2506,8 +2507,12 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                   final currentJobDescription = user['currentJobDescription'] ?? '';
                   final highestEducation = user['highestEducation'] ?? '';
                   final skills = List<String>.from(user['skills'] ?? []);
-                                  final aadharCardUrl = user['aadharCardUrl'] ?? '';
+                  final aadharCardUrl = user['aadharCardUrl'] ?? '';
                   final aadharCardFileName = user['aadharCardFileName'] ?? '';
+                  final aadharCardFrontUrl = user['aadharCardFrontUrl'] ?? aadharCardUrl;
+                  final aadharCardFrontFileName = user['aadharCardFrontFileName'] ?? aadharCardFileName;
+                  final aadharCardBackUrl = user['aadharCardBackUrl'] ?? '';
+                  final aadharCardBackFileName = user['aadharCardBackFileName'] ?? '';
                   final resumeUrl = user['resumeUrl'] ?? '';
                   final resumeFileName = user['resumeFileName'] ?? '';
 
@@ -2593,8 +2598,10 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                             children: [
                               _buildAppDetailField(Icons.phone_outlined, 'Phone', phone),
                               _buildAppDetailField(Icons.email_outlined, 'Email', email.isNotEmpty ? email : "N/A"),
-                              if (aadharCardFileName.isNotEmpty)
-                                _buildAppDetailField(Icons.image_rounded, 'Aadhar Card ID', aadharCardFileName, isLink: true, resumeUrl: aadharCardUrl),
+                              if (aadharCardFrontFileName.isNotEmpty)
+                                _buildAppDetailField(Icons.image_rounded, 'Aadhar Front', aadharCardFrontFileName, isLink: true, resumeUrl: aadharCardFrontUrl),
+                              if (aadharCardBackFileName.isNotEmpty)
+                                _buildAppDetailField(Icons.image_rounded, 'Aadhar Back', aadharCardBackFileName, isLink: true, resumeUrl: aadharCardBackUrl),
                               if (resumeFileName.isNotEmpty)
                                 _buildAppDetailField(Icons.attach_file_rounded, 'Resume', resumeFileName, isLink: true, resumeUrl: resumeUrl),
                             ],

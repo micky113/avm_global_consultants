@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:avm_global_web/models/job.dart';
 import 'package:avm_global_web/services/firebase_service.dart';
 import 'package:avm_global_web/view/admin/admin_dashboard.dart';
+import 'package:avm_global_web/view/admin/employer_dashboard.dart';
 import 'package:avm_global_web/view/home_page/widgets/animated_card/animated_card.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'dart:js' as js;
@@ -100,7 +102,7 @@ class _MyHomePageState extends State<MyHomePage> {
           stream: FirebaseService.instance.getJobsStream(),
           builder: (context, jobsSnapshot) {
             if (jobsSnapshot.hasData && jobsSnapshot.data!.isNotEmpty) {
-              final recentJobs = jobsSnapshot.data!.take(3);
+              final recentJobs = jobsSnapshot.data!.take(7).toList();
               return Container(
                 margin: const EdgeInsets.only(top: 16),
                 child: Column(
@@ -115,13 +117,10 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      alignment: WrapAlignment.center,
-                      children: recentJobs.map((job) {
-                        return _buildJobCard(context, job, isMobile);
-                      }).toList(),
+                    HorizontalJobSlider(
+                      jobs: recentJobs,
+                      isMobile: isMobile,
+                      cardBuilder: (ctx, job) => _buildJobCard(ctx, job, isMobile, isFixedMobileWidth: true),
                     ),
                   ],
                 ),
@@ -134,12 +133,12 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget _buildJobCard(BuildContext context, Job job, bool isMobile) {
+  Widget _buildJobCard(BuildContext context, Job job, bool isMobile, {bool isFixedMobileWidth = false}) {
     const themeColor = Color(0xFF146EB8);
     const darkBlue = Color(0xFF0A192F);
     
     return Container(
-      width: isMobile ? double.infinity : 340,
+      width: isMobile ? (isFixedMobileWidth ? 280.0 : double.infinity) : 340.0,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -1000,23 +999,6 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
 
-          ExpansionTile(
-            title: Text('For Job Seekers', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
-            children: [
-              'Search IT Jobs',
-              'Working with AVM Global',
-              'AVM Global Academy',
-              'International Programs',
-            ].map((item) => ListTile(
-              title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
-              onTap: () {
-                Navigator.pop(context);
-                if (item == 'Search IT Jobs') {
-                  context.go('/jobs');
-                }
-              },
-            )).toList(),
-          ),
           ListTile(
             leading: const Icon(Icons.app_registration_rounded, color: Color(0xFFE28743)),
             title: Text(
@@ -1060,6 +1042,21 @@ class _MyHomePageState extends State<MyHomePage> {
                 }
               },
             )).toList(),
+          ),
+          const Divider(),
+          ListTile(
+            leading: Icon(Icons.post_add_rounded, color: contact_button_color),
+            title: Text(
+              'Post a Job',
+              style: GoogleFonts.notoSans(
+                fontWeight: FontWeight.bold,
+                color: contact_button_color,
+              ),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              context.go('/employer');
+            },
           ),
           const Divider(),
           ListTile(
@@ -1335,57 +1332,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
 
-                  // 3. Services Section
-                  Container(
-                    color: Colors.grey[50],
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 40.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Our Core Pillars',
-                          style: GoogleFonts.notoSans(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 15),
-                        Text(
-                          'We operate on a foundation of trust, transparency, and global reach – helping candidates secure their dream careers and global employers find top-tier talent.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.notoSans(
-                            fontSize: 15,
-                            height: 1.4,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        AnimatedCard(
-                          defaultSize: 120,
-                          hoverSize: 200,
-                          width: w - 40,
-                          height: 450,
-                          imageName: 'images/faded_logo.png',
-                          animatedImage: 'images/prof_logo.png',
-                          text1: 'Recruitment Services',
-                          text2: 'Connecting Indian talent with leading global companies across Europe, UK, Canada, and the Gulf.',
-                        ),
-                        const SizedBox(height: 20),
-                        AnimatedCard(
-                          defaultSize: 80,
-                          hoverSize: 150,
-                          width: w - 40,
-                          height: 450,
-                          imageName: 'images/faded_logo.png',
-                          animatedImage: 'images/staff_logo.png',
-                          text1: 'Visa & Relocation Support',
-                          text2: 'Handling full documentation, licensing, background verifications, and end-to-end relocation support.',
-                        ),
-                      ],
-                    ),
-                  ),
+
 
 
 
@@ -1661,25 +1608,22 @@ class _MyHomePageState extends State<MyHomePage> {
                             ),
                           ),
                           const SizedBox(width: 30),
-                          const HoverText(
-                            dropdownItems: [
-                              'Search IT Jobs',
-                              'Working with AVM Global',
-                              'AVM Global Academy',
-                              'International Programs',
-                            ],
-
-                            text: 'For Job Seekers',
-                            // Define your colors clearly
-                            defaultStyle: TextStyle(
-                              color: Colors.black,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                          OutlinedButton.icon(
+                            onPressed: () => context.go('/employer'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF146EB8),
+                              side: const BorderSide(color: Color(0xFF146EB8), width: 2.0),
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(24)),
                             ),
-                            hoverStyle: TextStyle(
-                              color: Color.fromARGB(255, 20, 110, 184),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                            icon: const Icon(Icons.post_add_rounded, size: 16),
+                            label: Text(
+                              'Post a Job',
+                              style: GoogleFonts.notoSans(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 40),
@@ -2045,125 +1989,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     ],
                   ),
                 ),
-                SizedBox(height: 50),
-                Center(
-                  child: Column(
-                    children: [
-                      Text(
-                        'Our Core Pillars',
-                        style: GoogleFonts.notoSans(
-                          fontSize: 23,
-                          height: 1.3,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(height: 28),
-                      Text(
-                        'We operate on a foundation of trust, transparency, and global reach – helping candidates\n                       secure their dream careers and global employers find top-tier talent.',
-                        style: GoogleFonts.notoSans(
-                          fontSize: 16,
-                          height: 1.3,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(height: 60),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          AnimatedCard(
-                            defaultSize: 240,
-                            hoverSize: 480,
-                            imageName: 'images/faded_logo.png',
-                            animatedImage: 'images/prof_logo.png',
-                            text1: 'Recruitment Services',
-                            text2:
-                                'Connecting Indian talent with leading global companies across Europe, UK, Canada, and the Gulf.',
-                          ),
-                          AnimatedCard(
-                            defaultSize: 120,
-                            hoverSize: 240,
-                            imageName: 'images/faded_logo.png',
-                            animatedImage: 'images/staff_logo.png',
-                            text1: 'Visa & Relocation Support',
-                            text2:
-                                'Handling full documentation, licensing, background verifications, and end-to-end relocation support.',
-                          ),
-                          /*
-                          Stack(
-                            children: [
-                              InkWell(
-                                onTap: () {},
-                                child: Container(
-                                  height: 480,
-                                  width: 600,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(20),
-                                    ),
-                                    color: Color.fromARGB(255, 20, 110, 184),
-                                    image: DecorationImage(
-                                      fit: BoxFit.cover,
-                                      image:
-                                          Image.asset(
-                                            'images/faded_logo.png',
-                                          ).image,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Positioned.fill(
-                                child: Center(
-                                  child: Image.asset(
-                                    'images/prof_logo.png',
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          */
-                          // InkWell(
-                          //   onTap: () {},
-                          //   child: Container(
-                          //     height: 480,
-                          //     width: 600,
-                          //     decoration: BoxDecoration(
-                          //       borderRadius: BorderRadius.all(
-                          //         Radius.circular(20),
-                          //       ),
-                          //       color: Color.fromARGB(255, 20, 110, 184),
-                          //       image: DecorationImage(
-                          //         fit: BoxFit.cover,
-                          //         image:
-                          //             Image.asset(
-                          //               'images/faded_logo.png',
-                          //             ).image,
-                          //       ),
-                          //     ),
-                          //   ),
-                          // ),
-                        ],
-                      ),
-                      // Row(children: [
-                      //   // InkWell(
-                      //   //   onTap: (){},
-                      //   //   child: Container(
-                      //   //     height: 100,
-                      //   //     width: 100,
-                      //   //     decoration: BoxDecoration(
-                      //   //       color: Colors.blue
-                      //   //     ),
-                      //   //   ),
-                      //   // ),
-                      //   InkWell(
-                      //     onTap: (){},
-                      //   )
-                      // ],)
-                    ],
-                  ),
-                ),
+
 
                 SizedBox(
                   height: 500,
@@ -3193,6 +3019,105 @@ class _ContactDialogState extends State<_ContactDialog> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class HorizontalJobSlider extends StatefulWidget {
+  final List<Job> jobs;
+  final bool isMobile;
+  final Widget Function(BuildContext, Job) cardBuilder;
+
+  const HorizontalJobSlider({
+    super.key,
+    required this.jobs,
+    required this.isMobile,
+    required this.cardBuilder,
+  });
+
+  @override
+  State<HorizontalJobSlider> createState() => _HorizontalJobSliderState();
+}
+
+class _HorizontalJobSliderState extends State<HorizontalJobSlider> {
+  late ScrollController _scrollController;
+  Timer? _timer;
+  bool _isPaused = false;
+  double _scrollOffset = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startAutoScroll();
+    });
+  }
+
+  void _startAutoScroll() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(milliseconds: 20), (timer) {
+      if (!mounted || !_scrollController.hasClients || _isPaused) return;
+
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      if (maxScroll <= 0) return;
+
+      // Synchronize to support manual drag scrolling
+      _scrollOffset = _scrollController.offset;
+
+      _scrollOffset += 0.4; // slow scrolling rate (approx 20 pixels per second)
+      if (_scrollOffset >= maxScroll) {
+        _scrollOffset = 0.0;
+        _scrollController.jumpTo(0.0);
+      } else {
+        _scrollController.jumpTo(_scrollOffset);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.jobs.isEmpty) return const SizedBox.shrink();
+
+    // Repeat the jobs list to make the scroll seamless
+    final displayJobs = [
+      ...widget.jobs,
+      ...widget.jobs,
+      ...widget.jobs,
+      ...widget.jobs,
+    ];
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isPaused = true),
+      onExit: (_) => setState(() => _isPaused = false),
+      child: SizedBox(
+        height: 180, // height of our job card + padding
+        child: GestureDetector(
+          onTapDown: (_) => setState(() => _isPaused = true),
+          onTapUp: (_) => setState(() => _isPaused = false),
+          onTapCancel: () => setState(() => _isPaused = false),
+          child: ListView.builder(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            itemCount: displayJobs.length,
+            itemBuilder: (context, index) {
+              final job = displayJobs[index];
+              return Padding(
+                padding: const EdgeInsets.only(right: 16.0, top: 8.0, bottom: 8.0),
+                child: widget.cardBuilder(context, job),
+              );
+            },
+          ),
         ),
       ),
     );

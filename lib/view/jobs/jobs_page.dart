@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:avm_global_web/models/job.dart';
 import 'package:avm_global_web/services/firebase_service.dart';
 import 'package:avm_global_web/view/admin/admin_dashboard.dart';
+import 'package:avm_global_web/view/admin/employer_dashboard.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'dart:js' as js;
 
@@ -378,7 +379,28 @@ class _JobsPageState extends State<JobsPage> {
             ],
           ),
           actions: [
-            if (!isMobile)
+            if (!isMobile) ...[
+              Padding(
+                padding: const EdgeInsets.only(right: 20.0),
+                child: OutlinedButton.icon(
+                  onPressed: () => context.go('/employer'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: themeColor,
+                    side: BorderSide(color: themeColor, width: 2.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  icon: const Icon(Icons.post_add_rounded, size: 16),
+                  label: Text(
+                    'Post a Job',
+                    style: GoogleFonts.notoSans(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.only(right: 40.0),
                 child: TextButton.icon(
@@ -401,6 +423,7 @@ class _JobsPageState extends State<JobsPage> {
                   ),
                 ),
               ),
+            ],
           ],
         ),
       ),
