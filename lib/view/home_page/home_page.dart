@@ -134,39 +134,54 @@ class _MyHomePageState extends State<MyHomePage> {
         onSubmitted();
       },
       fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-        return TextField(
-          controller: textEditingController,
-          focusNode: focusNode,
-          textInputAction: TextInputAction.search,
-          onSubmitted: (_) => onSubmitted(),
-          decoration: InputDecoration(
-            prefixIcon: isBordered ? Icon(prefixIcon, color: iconColor) : null,
-            hintText: hintText,
-            hintStyle: GoogleFonts.notoSans(
-              color: Colors.black38,
-              fontSize: isMobile ? 14 : 15,
-            ),
-            border: isBordered
-                ? const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                    borderSide: BorderSide(color: Colors.black12),
-                  )
-                : InputBorder.none,
-            focusedBorder: isBordered
-                ? const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                    borderSide: BorderSide(color: Color.fromARGB(255, 20, 110, 184)),
-                  )
-                : InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(
-              vertical: isBordered ? 12 : 15,
-              horizontal: isBordered ? 12 : 0,
-            ),
-          ),
-          style: GoogleFonts.notoSans(
-            fontSize: isMobile ? 14 : 15,
-            color: Colors.black87,
-          ),
+        return ValueListenableBuilder<TextEditingValue>(
+          valueListenable: textEditingController,
+          builder: (context, value, _) {
+            final bool hasText = value.text.isNotEmpty;
+            return TextField(
+              controller: textEditingController,
+              focusNode: focusNode,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => onSubmitted(),
+              decoration: InputDecoration(
+                prefixIcon: isBordered ? Icon(prefixIcon, color: iconColor) : null,
+                suffixIcon: hasText
+                    ? IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 18, color: Colors.black45),
+                        tooltip: 'Clear',
+                        onPressed: () {
+                          textEditingController.clear();
+                        },
+                      )
+                    : null,
+                hintText: hintText,
+                hintStyle: GoogleFonts.notoSans(
+                  color: Colors.black38,
+                  fontSize: isMobile ? 14 : 15,
+                ),
+                border: isBordered
+                    ? OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.black12),
+                      )
+                    : InputBorder.none,
+                focusedBorder: isBordered
+                    ? OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color.fromARGB(255, 20, 110, 184), width: 1.5),
+                      )
+                    : InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  vertical: isBordered ? 12 : 15,
+                  horizontal: isBordered ? 12 : 0,
+                ),
+              ),
+              style: GoogleFonts.notoSans(
+                fontSize: isMobile ? 14 : 15,
+                color: Colors.black87,
+              ),
+            );
+          },
         );
       },
       optionsViewBuilder: (context, onSelected, options) {
@@ -202,19 +217,19 @@ class _MyHomePageState extends State<MyHomePage> {
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         child: Row(
                           children: [
-                            Icon(prefixIcon, size: 16, color: iconColor.withValues(alpha: 0.8)),
+                            Icon(prefixIcon, size: 16, color: iconColor.withValues(alpha: 0.85)),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 option,
                                 style: GoogleFonts.notoSans(
-                                  fontSize: 13,
-                                  color: Colors.black87,
+                                  fontSize: 13.5,
+                                  color: const Color(0xFF1E293B),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ),
-                            const Icon(Icons.north_west, size: 13, color: Colors.black26),
+                            const Icon(Icons.north_west_rounded, size: 13, color: Colors.black26),
                           ],
                         ),
                       ),
@@ -373,133 +388,13 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _buildJobCard(BuildContext context, Job job, bool isMobile, {bool isFixedMobileWidth = false}) {
-    const themeColor = Color(0xFF146EB8);
-    const darkBlue = Color(0xFF0A192F);
-    
-    return Container(
-      width: isMobile ? (isFixedMobileWidth ? 280.0 : double.infinity) : 340.0,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: InkWell(
-        onTap: () => _showJobDetailsDialog(context, job),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          job.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.notoSans(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: darkBlue,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          job.company,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.notoSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      _buildJobStatusBadge(job.status),
-                      const SizedBox(height: 5),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: themeColor.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          job.type,
-                          style: GoogleFonts.notoSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: themeColor,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Icon(Icons.location_on_outlined, size: 16, color: Colors.grey[400]),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      job.location,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.monetization_on_outlined, size: 16, color: Colors.grey[400]),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      job.salaryRange,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey[400]),
-                  const SizedBox(width: 6),
-                  Text(
-                    _getPostedAgoText(job.postedAt),
-                    style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black38),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    return _JobCardItem(
+      job: job,
+      isMobile: isMobile,
+      isFixedMobileWidth: isFixedMobileWidth,
+      onTap: () => _showJobDetailsDialog(context, job),
+      getPostedAgoText: _getPostedAgoText,
+      buildJobStatusBadge: _buildJobStatusBadge,
     );
   }
 
@@ -1443,13 +1338,24 @@ class _MyHomePageState extends State<MyHomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Find your dream\nglobal career now',
-                          style: GoogleFonts.notoSans(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF0A192F),
-                            height: 1.2,
+                        RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.notoSans(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF0A192F),
+                              height: 1.22,
+                            ),
+                            children: const [
+                              TextSpan(text: 'Find your dream\n'),
+                              TextSpan(
+                                text: 'global career',
+                                style: TextStyle(
+                                  color: Color(0xFF146EB8),
+                                ),
+                              ),
+                              TextSpan(text: ' now'),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -2063,14 +1969,26 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
-                        'Find your dream global career now',
+                      RichText(
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.notoSans(
-                          fontSize: 44,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF0A192F),
-                          letterSpacing: -0.5,
+                        text: TextSpan(
+                          style: GoogleFonts.notoSans(
+                            fontSize: 46,
+                            fontWeight: FontWeight.w900,
+                            color: const Color(0xFF0A192F),
+                            letterSpacing: -0.5,
+                            height: 1.18,
+                          ),
+                          children: const [
+                            TextSpan(text: 'Find Your Dream '),
+                            TextSpan(
+                              text: 'Global Career',
+                              style: TextStyle(
+                                color: Color(0xFF146EB8),
+                              ),
+                            ),
+                            TextSpan(text: ' Now'),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -3579,5 +3497,197 @@ class _DrawerHoverTileState extends State<_DrawerHoverTile> {
     );
   }
 }
+
+class _JobCardItem extends StatefulWidget {
+  final Job job;
+  final bool isMobile;
+  final bool isFixedMobileWidth;
+  final VoidCallback onTap;
+  final String Function(DateTime) getPostedAgoText;
+  final Widget Function(String) buildJobStatusBadge;
+
+  const _JobCardItem({
+    required this.job,
+    required this.isMobile,
+    required this.isFixedMobileWidth,
+    required this.onTap,
+    required this.getPostedAgoText,
+    required this.buildJobStatusBadge,
+  });
+
+  @override
+  State<_JobCardItem> createState() => _JobCardItemState();
+}
+
+class _JobCardItemState extends State<_JobCardItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    const themeColor = Color(0xFF146EB8);
+    const darkBlue = Color(0xFF0A192F);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          transform: Matrix4.translationValues(0, _isHovered ? -4 : 0, 0),
+          width: widget.isMobile
+              ? (widget.isFixedMobileWidth ? 280.0 : double.infinity)
+              : 340.0,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _isHovered
+                  ? const Color(0xFF146EB8).withValues(alpha: 0.35)
+                  : Colors.grey[200]!,
+              width: _isHovered ? 1.5 : 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _isHovered
+                    ? const Color(0x1A146EB8)
+                    : Colors.black.withValues(alpha: 0.04),
+                blurRadius: _isHovered ? 18 : 8,
+                offset: Offset(0, _isHovered ? 8 : 3),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.job.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.notoSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: _isHovered ? themeColor : darkBlue,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.job.company,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.notoSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        widget.buildJobStatusBadge(widget.job.status),
+                        const SizedBox(height: 5),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: themeColor.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            widget.job.type,
+                            style: GoogleFonts.notoSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: themeColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Icon(Icons.location_on_outlined, size: 16, color: Colors.grey[400]),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        widget.job.location,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.monetization_on_outlined, size: 16, color: Colors.grey[400]),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        widget.job.salaryRange,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.notoSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF0F766E),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today_outlined, size: 13, color: Colors.grey[400]),
+                        const SizedBox(width: 6),
+                        Text(
+                          widget.getPostedAgoText(widget.job.postedAt),
+                          style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black38),
+                        ),
+                      ],
+                    ),
+                    AnimatedSlide(
+                      duration: const Duration(milliseconds: 150),
+                      offset: Offset(_isHovered ? 0.2 : 0, 0),
+                      child: Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 16,
+                        color: _isHovered ? themeColor : Colors.black26,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 

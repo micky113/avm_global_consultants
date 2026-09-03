@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:avm_global_web/view/home_page/widgets/center_line_animation/center_line_animation.dart';
 
 class HoverText extends StatefulWidget {
   final String text;
