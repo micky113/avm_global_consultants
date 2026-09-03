@@ -1276,80 +1276,97 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
 
-          ListTile(
-            leading: const Icon(Icons.app_registration_rounded, color: Color(0xFFE28743)),
-            title: Text(
-              'Register as Candidate',
-              style: GoogleFonts.notoSans(
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFFE28743),
-              ),
-            ),
+          const SizedBox(height: 8),
+          _DrawerHoverTile(
+            leadingIcon: Icons.app_registration_rounded,
+            leadingColor: const Color(0xFFE28743),
+            activeColor: const Color(0xFFE28743),
+            isBold: true,
+            title: 'Register as Candidate',
             onTap: () {
               Navigator.pop(context);
               context.go('/register');
             },
           ),
-          const Divider(),
-          ListTile(
-            title: Text('Testimonials', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
+          _DrawerHoverTile(
+            leadingIcon: Icons.work_outline_rounded,
+            title: 'Explore All Jobs',
+            onTap: () {
+              Navigator.pop(context);
+              context.go('/jobs');
+            },
+          ),
+          _DrawerHoverTile(
+            leadingIcon: Icons.star_outline_rounded,
+            title: 'Testimonials',
             onTap: () {
               Navigator.pop(context);
               _scrollToSection(_testimonialsKey);
             },
           ),
-          ExpansionTile(
-            title: Text('About Us', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600)),
-            children: [
-              'Social Responsibility',
-              'Corporate Careers',
-              'Contact Us',
-            ].map((item) => ListTile(
-              title: Text(item, style: GoogleFonts.notoSans(fontSize: 14)),
-              onTap: () {
-                Navigator.pop(context);
-                final pathMap = {
-                  'Social Responsibility': '/about/social-responsibility',
-                  'Corporate Careers': '/about/corporate-careers',
-                  'Contact Us': '/about/contact-us',
-                };
-                final path = pathMap[item];
-                if (path != null) {
-                  context.go(path);
-                }
-              },
-            )).toList(),
-          ),
-          const Divider(),
-          ListTile(
-            leading: Icon(Icons.post_add_rounded, color: contact_button_color),
-            title: Text(
-              'Post a Job',
-              style: GoogleFonts.notoSans(
-                fontWeight: FontWeight.bold,
-                color: contact_button_color,
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              leading: const Icon(Icons.info_outline_rounded, color: Color(0xFF146EB4), size: 20),
+              title: Text(
+                'About Us',
+                style: GoogleFonts.notoSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1E293B),
+                ),
               ),
+              children: [
+                'Social Responsibility',
+                'Corporate Careers',
+                'Contact Us',
+              ].map((item) {
+                return _DrawerHoverTile(
+                  title: item,
+                  isSubItem: true,
+                  onTap: () {
+                    Navigator.pop(context);
+                    final pathMap = {
+                      'Social Responsibility': '/about/social-responsibility',
+                      'Corporate Careers': '/about/corporate-careers',
+                      'Contact Us': '/about/contact-us',
+                    };
+                    final path = pathMap[item];
+                    if (path != null) {
+                      context.go(path);
+                    }
+                  },
+                );
+              }).toList(),
             ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Divider(height: 1, color: Colors.black12),
+          ),
+          _DrawerHoverTile(
+            leadingIcon: Icons.post_add_rounded,
+            leadingColor: contact_button_color,
+            activeColor: contact_button_color,
+            isBold: true,
+            title: 'Post a Job (Employers)',
             onTap: () {
               Navigator.pop(context);
               context.go('/employer');
             },
           ),
-          const Divider(),
-          ListTile(
-            leading: Icon(Icons.admin_panel_settings_rounded, color: contact_button_color),
-            title: Text(
-              'Admin Panel',
-              style: GoogleFonts.notoSans(
-                fontWeight: FontWeight.bold,
-                color: contact_button_color,
-              ),
-            ),
+          _DrawerHoverTile(
+            leadingIcon: Icons.admin_panel_settings_rounded,
+            leadingColor: contact_button_color,
+            activeColor: contact_button_color,
+            isBold: true,
+            title: 'Admin Panel',
             onTap: () {
               Navigator.pop(context);
               _showAdminDashboard(context);
             },
           ),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -3464,4 +3481,103 @@ class _HorizontalJobSliderState extends State<HorizontalJobSlider> {
     );
   }
 }
+
+class _DrawerHoverTile extends StatefulWidget {
+  final String title;
+  final IconData? leadingIcon;
+  final Color? leadingColor;
+  final Color? activeColor;
+  final VoidCallback onTap;
+  final bool isSubItem;
+  final bool isBold;
+
+  const _DrawerHoverTile({
+    required this.title,
+    this.leadingIcon,
+    this.leadingColor,
+    this.activeColor,
+    required this.onTap,
+    this.isSubItem = false,
+    this.isBold = false,
+  });
+
+  @override
+  State<_DrawerHoverTile> createState() => _DrawerHoverTileState();
+}
+
+class _DrawerHoverTileState extends State<_DrawerHoverTile> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColor = widget.activeColor ?? const Color(0xFF146EB4);
+    final iconColor = widget.leadingColor ?? themeColor;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          margin: EdgeInsets.symmetric(
+            horizontal: widget.isSubItem ? 16 : 10,
+            vertical: 2,
+          ),
+          padding: EdgeInsets.symmetric(
+            horizontal: widget.isSubItem ? 16 : 14,
+            vertical: widget.isSubItem ? 10 : 12,
+          ),
+          decoration: BoxDecoration(
+            color: _isHovered
+                ? themeColor.withValues(alpha: 0.08)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              if (widget.leadingIcon != null) ...[
+                Icon(
+                  widget.leadingIcon,
+                  color: _isHovered ? themeColor : iconColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 14),
+              ] else if (widget.isSubItem) ...[
+                Icon(
+                  Icons.subdirectory_arrow_right_rounded,
+                  color: _isHovered ? themeColor : Colors.black26,
+                  size: 16,
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: GoogleFonts.notoSans(
+                    fontSize: widget.isSubItem ? 14 : 15,
+                    fontWeight: (widget.isBold || _isHovered)
+                        ? FontWeight.bold
+                        : FontWeight.w500,
+                    color: _isHovered
+                        ? themeColor
+                        : (widget.leadingColor ?? const Color(0xFF1E293B)),
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 12,
+                color: _isHovered ? themeColor : Colors.black12,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 

@@ -1,5 +1,5 @@
-// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class HoverDropdownButton extends StatefulWidget {
   final Widget textButton;
@@ -86,20 +86,28 @@ class _HoverDropdownButtonState extends State<HoverDropdownButton> {
               },
               child: Material(
                 elevation: 8.0,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: widget.dropdownItems.map((item) {
-                    return InkWell(
-                      onTap: () {
-                        _hideOverlay();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-                        width: 150,
-                        child: Text(item),
-                      ),
-                    );
-                  }).toList(),
+                shadowColor: Colors.black26,
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.black12),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: widget.dropdownItems.map((item) {
+                      return _DropdownItemWidget(
+                        text: item,
+                        onTap: () {
+                          _hideOverlay();
+                        },
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
             ),
@@ -142,6 +150,72 @@ class _HoverDropdownButtonState extends State<HoverDropdownButton> {
         // This button's MouseRegion is now just a simple tracker.
       },
       child: widget.textButton,
+    );
+  }
+}
+
+class _DropdownItemWidget extends StatefulWidget {
+  final String text;
+  final VoidCallback onTap;
+
+  const _DropdownItemWidget({
+    required this.text,
+    required this.onTap,
+  });
+
+  @override
+  State<_DropdownItemWidget> createState() => _DropdownItemWidgetState();
+}
+
+class _DropdownItemWidgetState extends State<_DropdownItemWidget> {
+  bool _isItemHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isItemHovered = true),
+      onExit: (_) => setState(() => _isItemHovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeInOut,
+          width: 200,
+          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 11.0),
+          decoration: BoxDecoration(
+            color: _isItemHovered
+                ? const Color(0xFF146EB8).withValues(alpha: 0.08)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  widget.text,
+                  style: GoogleFonts.notoSans(
+                    fontSize: 14,
+                    fontWeight: _isItemHovered ? FontWeight.w600 : FontWeight.w500,
+                    color: _isItemHovered
+                        ? const Color(0xFF146EB8)
+                        : const Color(0xFF1E293B),
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 12,
+                color: _isItemHovered
+                    ? const Color(0xFF146EB8)
+                    : Colors.black26,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
