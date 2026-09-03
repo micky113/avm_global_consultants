@@ -8,6 +8,8 @@ import 'package:avm_global_web/models/testimonial.dart';
 import 'package:avm_global_web/models/job.dart';
 import 'package:avm_global_web/models/job_application.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 import 'dart:js' as js;
 import 'dart:html' as html;
 
@@ -1559,6 +1561,7 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                                       '${job.company}  •  ${job.location}',
                                       style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54),
                                     ),
+                                    _buildJobStatusBadge(job.status),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
@@ -1572,13 +1575,25 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                                     ),
                                   ],
                                 ),
-                                if (job.phone.isNotEmpty || job.email.isNotEmpty || job.link.isNotEmpty || job.name.isNotEmpty) ...[
+                                if (job.phone.isNotEmpty || job.email.isNotEmpty || job.link.isNotEmpty || job.name.isNotEmpty || job.clientCompany.isNotEmpty) ...[
                                   const SizedBox(height: 8),
                                   Wrap(
                                     spacing: 16,
                                     runSpacing: 6,
                                     crossAxisAlignment: WrapCrossAlignment.center,
                                     children: [
+                                      if (job.clientCompany.isNotEmpty)
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.business_outlined, size: 14, color: widget.themeColor.withOpacity(0.7)),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'Client: ${job.clientCompany}',
+                                              style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
                                       if (job.name.isNotEmpty)
                                         Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -1649,6 +1664,12 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                           Row(
                             children: [
                               IconButton(
+                                icon: const Icon(Icons.share_outlined),
+                                color: const Color(0xFF1877F2),
+                                tooltip: 'Share Job on Facebook Group',
+                                onPressed: () => _showFacebookShareDialog(job),
+                              ),
+                              IconButton(
                                 icon: const Icon(Icons.edit_outlined),
                                 color: widget.themeColor,
                                 tooltip: 'Edit Job',
@@ -1672,6 +1693,573 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showFacebookShareDialog(Job job) {
+    // Load list of target Facebook groups
+    List<Map<String, String>> targetGroups = [];
+    try {
+      if (kIsWeb) {
+        final stored = html.window.localStorage['fb_target_groups_list'];
+        if (stored != null && stored.trim().isNotEmpty) {
+          final List decoded = jsonDecode(stored);
+          targetGroups = decoded.map((e) => {
+            'name': (e['name'] ?? 'Facebook Group').toString(),
+            'url': (e['url'] ?? 'https://www.facebook.com/groups/').toString(),
+          }).toList();
+        } else {
+          final singleUrl = html.window.localStorage['fb_target_group_url'];
+          if (singleUrl != null && singleUrl.trim().isNotEmpty) {
+            targetGroups = [{'name': 'My Facebook Group', 'url': singleUrl.trim()}];
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (targetGroups.isEmpty) {
+      targetGroups = [
+        {'name': 'Official Facebook Group', 'url': 'https://www.facebook.com/groups/'}
+      ];
+    }
+
+    final newGroupNameCtrl = TextEditingController();
+    final newGroupUrlCtrl = TextEditingController();
+    bool isAddingGroup = false;
+
+    final jobUrl = (job.link.isNotEmpty &&
+            (job.link.startsWith('http://') || job.link.startsWith('https://')))
+        ? job.link
+        : (kIsWeb && html.window.location.origin.isNotEmpty
+            ? '${html.window.location.origin}/jobs?id=${job.id}'
+            : 'https://avmglobal-consultants-113.web.app/jobs?id=${job.id}');
+
+    final postText = '''🚀 WE ARE HIRING! 🚀
+
+📌 Role: ${job.title}
+📍 Location: ${job.location}
+💼 Job Type: ${job.type}
+
+📝 Description:
+${job.description.trim().isNotEmpty ? (job.description.length > 250 ? '${job.description.substring(0, 250)}...' : job.description) : 'Exciting career opportunity with our team.'}
+
+👉 View details & Apply here:
+$jobUrl
+
+#Hiring #JobOpening #Careers #Jobs #${job.title.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')} #AVMGlobal''';
+
+    void saveTargetGroups(List<Map<String, String>> list) {
+      try {
+        if (kIsWeb) {
+          html.window.localStorage['fb_target_groups_list'] = jsonEncode(list);
+          if (list.isNotEmpty) {
+            html.window.localStorage['fb_target_group_url'] = list.first['url'] ?? '';
+          }
+        }
+      } catch (_) {}
+    }
+
+    void copyAndOpen(BuildContext ctx, String groupName, String groupUrl) {
+      Clipboard.setData(ClipboardData(text: postText));
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        SnackBar(
+          content: Text('Post copied! Opening "$groupName"... Paste into the group post box.'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      if (kIsWeb) {
+        final urlToOpen = groupUrl.trim().isNotEmpty ? groupUrl.trim() : 'https://www.facebook.com/groups/';
+        html.window.open(urlToOpen, '_blank');
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final screenWidth = MediaQuery.of(context).size.width;
+            final isMobile = screenWidth < 600;
+
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              insetPadding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 12 : 24,
+                vertical: isMobile ? 16 : 24,
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              titlePadding: EdgeInsets.fromLTRB(
+                isMobile ? 16 : 24,
+                isMobile ? 16 : 24,
+                isMobile ? 16 : 24,
+                isMobile ? 10 : 12,
+              ),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 14 : 24,
+                vertical: isMobile ? 8 : 12,
+              ),
+              actionsPadding: EdgeInsets.fromLTRB(
+                isMobile ? 14 : 24,
+                0,
+                isMobile ? 14 : 24,
+                isMobile ? 14 : 20,
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(isMobile ? 6 : 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1877F2).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.facebook,
+                      color: const Color(0xFF1877F2),
+                      size: isMobile ? 22 : 26,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isMobile ? 'Share to FB Groups' : 'Share Job to Facebook Groups',
+                          style: GoogleFonts.notoSans(
+                            fontSize: isMobile ? 16 : 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          job.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.notoSans(
+                            fontSize: isMobile ? 12 : 13,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: isMobile ? screenWidth : 580,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Target Facebook Groups Section Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Target Facebook Groups (${targetGroups.length})',
+                              style: GoogleFonts.notoSans(
+                                fontWeight: FontWeight.bold,
+                                fontSize: isMobile ? 13 : 14,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF1877F2),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            icon: Icon(isAddingGroup ? Icons.close : Icons.add_circle_outline, size: 15),
+                            label: Text(
+                              isAddingGroup ? 'Cancel' : '+ Add Group',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: () {
+                              setDialogState(() {
+                                isAddingGroup = !isAddingGroup;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Add Group Inline Form
+                      if (isAddingGroup)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: EdgeInsets.all(isMobile ? 10 : 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1877F2).withOpacity(0.04),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFF1877F2).withOpacity(0.2)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Add Target Facebook Group',
+                                style: GoogleFonts.notoSans(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: const Color(0xFF1877F2),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: newGroupNameCtrl,
+                                style: GoogleFonts.notoSans(fontSize: 13),
+                                decoration: InputDecoration(
+                                  hintText: 'Group Name (e.g. Germany IT Careers)',
+                                  hintStyle: GoogleFonts.notoSans(fontSize: 12, color: Colors.black38),
+                                  isDense: true,
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: newGroupUrlCtrl,
+                                style: GoogleFonts.notoSans(fontSize: 13),
+                                decoration: InputDecoration(
+                                  hintText: 'Group URL (e.g. https://www.facebook.com/groups/...)',
+                                  hintStyle: GoogleFonts.notoSans(fontSize: 12, color: Colors.black38),
+                                  isDense: true,
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  TextButton(
+                                    onPressed: () {
+                                      setDialogState(() => isAddingGroup = false);
+                                    },
+                                    child: const Text('Cancel', style: TextStyle(fontSize: 12)),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF1877F2),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                    ),
+                                    onPressed: () {
+                                      final name = newGroupNameCtrl.text.trim();
+                                      final url = newGroupUrlCtrl.text.trim();
+                                      if (url.isEmpty) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Please enter a Facebook group URL')),
+                                        );
+                                        return;
+                                      }
+                                      setDialogState(() {
+                                        targetGroups.add({
+                                          'name': name.isNotEmpty ? name : 'Facebook Group ${targetGroups.length + 1}',
+                                          'url': url.startsWith('http://') || url.startsWith('https://') ? url : 'https://$url',
+                                        });
+                                        saveTargetGroups(targetGroups);
+                                        newGroupNameCtrl.clear();
+                                        newGroupUrlCtrl.clear();
+                                        isAddingGroup = false;
+                                      });
+                                    },
+                                    child: const Text('Save Group', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // List of Target Facebook Groups
+                      if (targetGroups.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12.0),
+                          child: Text(
+                            'No groups added yet. Click "+ Add Group" above.',
+                            style: GoogleFonts.notoSans(color: Colors.black54, fontSize: 13),
+                          ),
+                        )
+                      else
+                        Container(
+                          constraints: BoxConstraints(maxHeight: isMobile ? 220 : 180),
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: targetGroups.length,
+                            separatorBuilder: (context, index) => const SizedBox(height: 8),
+                            itemBuilder: (context, index) {
+                              final group = targetGroups[index];
+                              final groupName = group['name'] ?? 'Facebook Group';
+                              final groupUrl = group['url'] ?? 'https://www.facebook.com/groups/';
+
+                              if (isMobile) {
+                                // Clean stacked card for mobile screens
+                                return Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[50],
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: Colors.grey[200]!),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.groups_rounded, size: 20, color: Color(0xFF1877F2)),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              groupName,
+                                              style: GoogleFonts.notoSans(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.delete_outline, size: 18),
+                                            color: Colors.redAccent,
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            tooltip: 'Remove Group',
+                                            onPressed: () {
+                                              setDialogState(() {
+                                                targetGroups.removeAt(index);
+                                                saveTargetGroups(targetGroups);
+                                              });
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        groupUrl,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.notoSans(
+                                          fontSize: 11,
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFF1877F2),
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            padding: const EdgeInsets.symmetric(vertical: 8),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                          ),
+                                          icon: const Icon(Icons.open_in_new, size: 14),
+                                          label: const Text('Copy Post & Open Group', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                          onPressed: () => copyAndOpen(context, groupName, groupUrl),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+
+                              // Desktop row layout
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[50],
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.grey[200]!),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.groups_rounded, size: 22, color: Color(0xFF1877F2)),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            groupName,
+                                            style: GoogleFonts.notoSans(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          Text(
+                                            groupUrl,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.notoSans(
+                                              fontSize: 11,
+                                              color: Colors.black54,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF1877F2),
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        minimumSize: Size.zero,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                      ),
+                                      icon: const Icon(Icons.open_in_new, size: 14),
+                                      label: const Text('Copy & Open', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      onPressed: () => copyAndOpen(context, groupName, groupUrl),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, size: 18),
+                                      color: Colors.redAccent,
+                                      tooltip: 'Remove Group',
+                                      onPressed: () {
+                                        setDialogState(() {
+                                          targetGroups.removeAt(index);
+                                          saveTargetGroups(targetGroups);
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+
+                      const SizedBox(height: 14),
+
+                      // Formatted Post Content Preview
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Formatted Post Content',
+                            style: GoogleFonts.notoSans(
+                              fontWeight: FontWeight.w600,
+                              fontSize: isMobile ? 12 : 13,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            icon: const Icon(Icons.copy_rounded, size: 14),
+                            label: const Text('Copy Text', style: TextStyle(fontSize: 12)),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: postText));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Job post content copied to clipboard!'),
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(isMobile ? 10 : 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: SelectableText(
+                          postText,
+                          style: GoogleFonts.notoSans(
+                            fontSize: isMobile ? 11 : 12,
+                            color: Colors.black87,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                if (isMobile)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: const Text('Close'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF1877F2),
+                            side: const BorderSide(color: Color(0xFF1877F2)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                          icon: const Icon(Icons.share, size: 15),
+                          label: const Text('FB Dialog', style: TextStyle(fontSize: 12)),
+                          onPressed: () {
+                            Navigator.pop(dialogContext);
+                            final shareUrl = 'https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(jobUrl)}&quote=${Uri.encodeComponent(postText)}';
+                            if (kIsWeb) {
+                              html.window.open(shareUrl, '_blank');
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  )
+                else ...[
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text('Close'),
+                  ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF1877F2),
+                      side: const BorderSide(color: Color(0xFF1877F2)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    icon: const Icon(Icons.share, size: 16),
+                    label: const Text('FB Share Dialog'),
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      final shareUrl = 'https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(jobUrl)}&quote=${Uri.encodeComponent(postText)}';
+                      if (kIsWeb) {
+                        html.window.open(shareUrl, '_blank');
+                      }
+                    },
+                  ),
+                ],
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1939,6 +2527,53 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
     );
   }
 
+  Widget _buildJobStatusBadge(String status) {
+    final isOpen = status.trim().isEmpty || status.trim().toLowerCase() == 'open';
+    final color = isOpen ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    final label = isOpen ? 'Open' : 'Closed';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.25), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              boxShadow: isOpen
+                  ? [
+                      BoxShadow(
+                        color: color.withOpacity(0.4),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      )
+                    ]
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: GoogleFonts.notoSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Dialog form to Add or Edit jobs
   void _addEditJobDialog([Job? job]) {
     final formKey = GlobalKey<FormState>();
@@ -1947,12 +2582,13 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
     final locationCtrl = TextEditingController(text: job?.location ?? '');
     final salaryCtrl = TextEditingController(text: job?.salaryRange ?? '');
     final descCtrl = TextEditingController(text: job?.description ?? '');
-    final reqsCtrl = TextEditingController(text: job?.requirements ?? '');
+    final clientCompanyCtrl = TextEditingController(text: job?.clientCompany ?? '');
     final phoneCtrl = TextEditingController(text: job?.phone ?? '');
     final emailCtrl = TextEditingController(text: job?.email ?? '');
     final linkCtrl = TextEditingController(text: job?.link ?? '');
     final nameCtrl = TextEditingController(text: job?.name ?? '');
     String typeVal = job?.type ?? 'Full-time';
+    String statusVal = job?.status ?? 'Open';
 
     showDialog(
       context: context,
@@ -1991,49 +2627,33 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Company and Location
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Company', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
-                                  const SizedBox(height: 6),
-                                  TextFormField(
-                                    controller: companyCtrl,
-                                    decoration: InputDecoration(
-                                      hintText: 'e.g. Innovatech',
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                    ),
-                                    validator: (val) => val == null || val.trim().isEmpty ? 'Company required' : null,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Location', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
-                                  const SizedBox(height: 6),
-                                  TextFormField(
-                                    controller: locationCtrl,
-                                    decoration: InputDecoration(
-                                      hintText: 'e.g. Munich, Germany',
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                    ),
-                                    validator: (val) => val == null || val.trim().isEmpty ? 'Location required' : null,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                        // Company
+                        Text('Company', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: companyCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'e.g. Innovatech',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty ? 'Company required' : null,
                         ),
                         const SizedBox(height: 16),
 
-                        // Type and Salary Range
+                        // Location
+                        Text('Location', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: locationCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'e.g. Munich, Germany',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty ? 'Location required' : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Type, Status and Salary Range
                         Row(
                           children: [
                             Expanded(
@@ -2069,20 +2689,61 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Salary Range', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                                  Text('Status', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
                                   const SizedBox(height: 6),
-                                  TextFormField(
-                                    controller: salaryCtrl,
+                                  DropdownButtonFormField<String>(
+                                    value: statusVal,
                                     decoration: InputDecoration(
-                                      hintText: 'e.g. €70,000 - €85,000 / yr',
                                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                     ),
-                                    validator: (val) => val == null || val.trim().isEmpty ? 'Salary required' : null,
+                                    items: [
+                                      DropdownMenuItem(
+                                        value: 'Open',
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
+                                            const SizedBox(width: 6),
+                                            const Text('Open'),
+                                          ],
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 'Closed',
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFFEF4444), shape: BoxShape.circle)),
+                                            const SizedBox(width: 6),
+                                            const Text('Closed'),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setDialogState(() => statusVal = val);
+                                      }
+                                    },
                                   ),
                                 ],
                               ),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Salary Range
+                        Text('Salary Range', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: salaryCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'e.g. €70,000 - €85,000 / yr',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty ? 'Salary required' : null,
                         ),
                         const SizedBox(height: 16),
 
@@ -2099,20 +2760,6 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                           validator: (val) => val == null || val.trim().isEmpty ? 'Description required' : null,
                         ),
                         const SizedBox(height: 16),
-
-                        // Requirements
-                        Text('Job Requirements (Bulleted lines)', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: reqsCtrl,
-                          maxLines: 4,
-                          decoration: InputDecoration(
-                            hintText: '• Requirement 1\n• Requirement 2\n...',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          validator: (val) => val == null || val.trim().isEmpty ? 'Requirements required' : null,
-                        ),
-                        const SizedBox(height: 16),
                         const Divider(),
                         const SizedBox(height: 16),
                         Text(
@@ -2121,6 +2768,18 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                             color: widget.themeColor,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Client Company
+                        Text('Client Company', style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: clientCompanyCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'e.g. Acme Corp (Client)',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -2226,13 +2885,15 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                       type: typeVal,
                       salaryRange: salaryCtrl.text.trim(),
                       description: descCtrl.text.trim(),
-                      requirements: reqsCtrl.text.trim(),
+                      requirements: '',
                       postedAt: job?.postedAt ?? DateTime.now(),
                       phone: phoneCtrl.text.trim(),
                       email: emailCtrl.text.trim(),
                       link: linkCtrl.text.trim(),
                       name: nameCtrl.text.trim(),
                       employerId: job?.employerId ?? 'admin',
+                      clientCompany: clientCompanyCtrl.text.trim(),
+                      status: statusVal,
                     );
 
                     try {

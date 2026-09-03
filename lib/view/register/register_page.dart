@@ -58,7 +58,7 @@ class _RegisterPageState extends State<RegisterPage> {
       preferredSize: const Size.fromHeight(80.0),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFFF8FAFC),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.03),
@@ -86,15 +86,15 @@ class _RegisterPageState extends State<RegisterPage> {
               Image.asset(
                 'images/logo.png',
                 fit: BoxFit.contain,
-                width: isMobile ? 40 : 54,
-                height: isMobile ? 28 : 38,
+                width: isMobile ? 42 : 58,
+                height: isMobile ? 42 : 58,
                 errorBuilder: (context, error, stackTrace) => Icon(
                   Icons.business,
                   color: themeColor,
-                  size: 32,
+                  size: 38,
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,

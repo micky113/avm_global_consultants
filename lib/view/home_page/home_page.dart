@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
@@ -19,6 +21,7 @@ import 'package:avm_global_web/view/home_page/widgets/hover_clickable%20button/h
 import 'package:avm_global_web/view/home_page/widgets/hover_dropdown_button/hover_dropdown_button.dart';
 import 'package:avm_global_web/view/home_page/widgets/hover_text/hover_text.dart';
 import 'package:avm_global_web/widgets/testimonials_section.dart';
+import 'package:avm_global_web/widgets/footer_section.dart';
 
 class MyHomePage extends StatefulWidget {
   MyHomePage({super.key, required this.title, required this.dropdownItems});
@@ -48,6 +51,183 @@ class _MyHomePageState extends State<MyHomePage> {
 
   final _skillsController = TextEditingController();
   final _locationController = TextEditingController();
+
+  StreamSubscription? _jobsSubscription;
+  final List<String> _skillsSuggestions = [
+    'Software Engineer',
+    'Full Stack Developer',
+    'Frontend Developer',
+    'Backend Developer',
+    'Registered Nurse',
+    'Healthcare Assistant',
+    'Head Nurse',
+    'Civil Engineer',
+    'Mechanical Engineer',
+    'Electrical Engineer',
+    'Project Manager',
+    'Data Analyst',
+    'Chef de Partie',
+    'Executive Chef',
+    'Operations Manager',
+    'Accountant',
+    'Welder',
+    'Electrician',
+    'Plumber',
+    'Cloud Architect',
+    'DevOps Engineer',
+    'Sales Executive',
+    'Marketing Specialist',
+    'Hospitality Staff',
+    'Warehouse Supervisor',
+    'Customer Support Specialist',
+  ];
+
+  final List<String> _locationSuggestions = [
+    'Germany',
+    'United Kingdom',
+    'Canada',
+    'United States',
+    'Australia',
+    'New Zealand',
+    'Dubai, UAE',
+    'Poland',
+    'Malta',
+    'Ireland',
+    'Singapore',
+    'Kuwait',
+    'Saudi Arabia',
+    'Qatar',
+    'Netherlands',
+    'Sweden',
+    'France',
+    'Japan',
+    'Norway',
+    'Denmark',
+    'Finland',
+    'Switzerland',
+  ];
+
+  Widget _buildAutocompleteField({
+    required TextEditingController controller,
+    required List<String> suggestions,
+    required String hintText,
+    required IconData prefixIcon,
+    required Color iconColor,
+    required bool isMobile,
+    bool isBordered = false,
+    required VoidCallback onSubmitted,
+  }) {
+    return RawAutocomplete<String>(
+      textEditingController: controller,
+      focusNode: FocusNode(),
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        if (textEditingValue.text.trim().isEmpty) {
+          return const Iterable<String>.empty();
+        }
+        final query = textEditingValue.text.toLowerCase().trim();
+        return suggestions
+            .where((option) => option.toLowerCase().contains(query))
+            .take(8);
+      },
+      onSelected: (String selection) {
+        controller.text = selection;
+        onSubmitted();
+      },
+      fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+        return TextField(
+          controller: textEditingController,
+          focusNode: focusNode,
+          textInputAction: TextInputAction.search,
+          onSubmitted: (_) => onSubmitted(),
+          decoration: InputDecoration(
+            prefixIcon: isBordered ? Icon(prefixIcon, color: iconColor) : null,
+            hintText: hintText,
+            hintStyle: GoogleFonts.notoSans(
+              color: Colors.black38,
+              fontSize: isMobile ? 14 : 15,
+            ),
+            border: isBordered
+                ? const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                    borderSide: BorderSide(color: Colors.black12),
+                  )
+                : InputBorder.none,
+            focusedBorder: isBordered
+                ? const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                    borderSide: BorderSide(color: Color.fromARGB(255, 20, 110, 184)),
+                  )
+                : InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(
+              vertical: isBordered ? 12 : 15,
+              horizontal: isBordered ? 12 : 0,
+            ),
+          ),
+          style: GoogleFonts.notoSans(
+            fontSize: isMobile ? 14 : 15,
+            color: Colors.black87,
+          ),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 8,
+            shadowColor: Colors.black26,
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.white,
+            child: Container(
+              width: isMobile
+                  ? (MediaQuery.of(context).size.width - 72).clamp(240.0, 450.0)
+                  : 340,
+              constraints: const BoxConstraints(maxHeight: 240),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.black12),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  shrinkWrap: true,
+                  itemCount: options.length,
+                  itemBuilder: (context, index) {
+                    final option = options.elementAt(index);
+                    return InkWell(
+                      onTap: () => onSelected(option),
+                      hoverColor: const Color(0xFF146EB4).withValues(alpha: 0.08),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        child: Row(
+                          children: [
+                            Icon(prefixIcon, size: 16, color: iconColor.withValues(alpha: 0.8)),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                option,
+                                style: GoogleFonts.notoSans(
+                                  fontSize: 13,
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.north_west, size: 13, color: Colors.black26),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   void _performSearch({String? query, String? location, bool logSearch = false}) {
     final cleanQuery = query?.trim() ?? '';
@@ -102,7 +282,19 @@ class _MyHomePageState extends State<MyHomePage> {
           stream: FirebaseService.instance.getJobsStream(),
           builder: (context, jobsSnapshot) {
             if (jobsSnapshot.hasData && jobsSnapshot.data!.isNotEmpty) {
-              final recentJobs = jobsSnapshot.data!.take(7).toList();
+              final sortedJobs = List<Job>.from(jobsSnapshot.data!)
+                ..sort((a, b) => b.postedAt.compareTo(a.postedAt));
+
+              final fifteenDaysAgo = DateTime.now().subtract(const Duration(days: 15));
+              final jobsInLast15Days = sortedJobs
+                  .where((job) => job.postedAt.isAfter(fifteenDaysAgo))
+                  .toList();
+
+              // Show all jobs posted in the last 15 days or the recent 30 jobs
+              final recentJobs = jobsInLast15Days.length >= 30
+                  ? jobsInLast15Days
+                  : sortedJobs.take(30).toList();
+
               return Container(
                 margin: const EdgeInsets.only(top: 16),
                 child: Column(
@@ -130,6 +322,53 @@ class _MyHomePageState extends State<MyHomePage> {
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildJobStatusBadge(String status) {
+    final isOpen = status.trim().isEmpty || status.trim().toLowerCase() == 'open';
+    final color = isOpen ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    final label = isOpen ? 'Open' : 'Closed';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.25), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              boxShadow: isOpen
+                  ? [
+                      BoxShadow(
+                        color: color.withOpacity(0.4),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      )
+                    ]
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: GoogleFonts.notoSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -192,20 +431,27 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: themeColor.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      job.type,
-                      style: GoogleFonts.notoSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: themeColor,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _buildJobStatusBadge(job.status),
+                      const SizedBox(height: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: themeColor.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          job.type,
+                          style: GoogleFonts.notoSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: themeColor,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -337,7 +583,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   Wrap(
                     spacing: 16,
                     runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
+                      _buildJobStatusBadge(job.status),
                       _buildDetailBadge(Icons.location_on_rounded, job.location),
                       _buildDetailBadge(Icons.work_rounded, job.type),
                       _buildDetailBadge(Icons.monetization_on_rounded, job.salaryRange),
@@ -367,24 +615,26 @@ class _MyHomePageState extends State<MyHomePage> {
                               height: 1.4,
                             ),
                           ),
-                          const SizedBox(height: 20),
-                          SelectableText(
-                            'Requirements',
-                            style: GoogleFonts.notoSans(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: darkBlue,
+                          if (job.requirements.trim().isNotEmpty) ...[
+                            const SizedBox(height: 20),
+                            SelectableText(
+                              'Requirements',
+                              style: GoogleFonts.notoSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: darkBlue,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          SelectableText(
-                            job.requirements,
-                            style: GoogleFonts.notoSans(
-                              fontSize: 13,
-                              color: Colors.black87,
-                              height: 1.4,
+                            const SizedBox(height: 8),
+                            SelectableText(
+                              job.requirements,
+                              style: GoogleFonts.notoSans(
+                                fontSize: 13,
+                                color: Colors.black87,
+                                height: 1.4,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
@@ -885,6 +1135,32 @@ class _MyHomePageState extends State<MyHomePage> {
     _desktopScrollController = ScrollController();
     _desktopFocusNode = FocusNode();
 
+    // Dynamically populate suggestion hints from live Firestore jobs
+    _jobsSubscription = FirebaseService.instance.getJobsStream().listen((jobs) {
+      if (!mounted) return;
+      final Set<String> newSkills = {..._skillsSuggestions};
+      final Set<String> newLocations = {..._locationSuggestions};
+      for (final job in jobs) {
+        if (job.title.trim().isNotEmpty) newSkills.add(job.title.trim());
+        if (job.company.trim().isNotEmpty) newSkills.add(job.company.trim());
+        if (job.type.trim().isNotEmpty) newSkills.add(job.type.trim());
+        if (job.location.trim().isNotEmpty) {
+          newLocations.add(job.location.trim());
+          final parts = job.location.split(RegExp(r'[,/-]'));
+          for (final part in parts) {
+            final trimmed = part.trim();
+            if (trimmed.length > 2) newLocations.add(trimmed);
+          }
+        }
+      }
+      setState(() {
+        _skillsSuggestions.clear();
+        _skillsSuggestions.addAll(newSkills);
+        _locationSuggestions.clear();
+        _locationSuggestions.addAll(newLocations);
+      });
+    });
+
     // Log analytics page view on enter
     FirebaseAnalytics.instance.logScreenView(
       screenName: 'Home',
@@ -915,6 +1191,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void dispose() {
+    _jobsSubscription?.cancel();
     _desktopScrollController.dispose();
     _desktopFocusNode.dispose();
     _skillsController.dispose();
@@ -955,7 +1232,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(3),
                       decoration: const BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
@@ -963,8 +1240,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       child: ClipOval(
                         child: Image.asset(
                           'images/logo.png',
-                          width: 32,
-                          height: 32,
+                          width: 54,
+                          height: 54,
                           fit: BoxFit.contain,
                         ),
                       ),
@@ -1084,9 +1361,10 @@ class _MyHomePageState extends State<MyHomePage> {
     bool colorChange = false;
     return w < 1100
         ? Scaffold(
+            backgroundColor: const Color(0xFFF8FAFC),
             appBar: AppBar(
               toolbarHeight: w < 600 ? 65.0 : null,
-              backgroundColor: Colors.white,
+              backgroundColor: const Color(0xFFF8FAFC),
               titleSpacing: w < 600 ? 16.0 : 8.0,
               scrolledUnderElevation: 0,
               surfaceTintColor: Colors.transparent,
@@ -1097,10 +1375,10 @@ class _MyHomePageState extends State<MyHomePage> {
                   Image.asset(
                     'images/logo.png',
                     fit: BoxFit.contain,
-                    width: w < 600 ? 40 : 54,
-                    height: w < 600 ? 28 : 38,
+                    width: w < 600 ? 42 : 58,
+                    height: w < 600 ? 42 : 58,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1183,42 +1461,38 @@ class _MyHomePageState extends State<MyHomePage> {
                           ),
                           child: Column(
                             children: [
-                              TextField(
+                              _buildAutocompleteField(
                                 controller: _skillsController,
-                                decoration: InputDecoration(
-                                  prefixIcon: const Icon(Icons.search, color: Colors.blueAccent),
-                                  hintText: 'Skills, designations, companies',
-                                  hintStyle: GoogleFonts.notoSans(color: Colors.black38, fontSize: 14),
-                                  border: const OutlineInputBorder(
-                                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                                    borderSide: BorderSide(color: Colors.black12),
-                                  ),
-                                  focusedBorder: const OutlineInputBorder(
-                                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                                    borderSide: BorderSide(color: Color.fromARGB(255, 20, 110, 184)),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                                ),
-                                style: GoogleFonts.notoSans(fontSize: 14, color: Colors.black87),
+                                suggestions: _skillsSuggestions,
+                                hintText: 'Skills, designations, companies',
+                                prefixIcon: Icons.search,
+                                iconColor: Colors.blueAccent,
+                                isMobile: true,
+                                isBordered: true,
+                                onSubmitted: () {
+                                  _performSearch(
+                                    query: _skillsController.text,
+                                    location: _locationController.text,
+                                    logSearch: true,
+                                  );
+                                },
                               ),
                               const SizedBox(height: 12),
-                              TextField(
+                              _buildAutocompleteField(
                                 controller: _locationController,
-                                decoration: InputDecoration(
-                                  prefixIcon: const Icon(Icons.location_on_outlined, color: Colors.redAccent),
-                                  hintText: 'Location or Country',
-                                  hintStyle: GoogleFonts.notoSans(color: Colors.black38, fontSize: 14),
-                                  border: const OutlineInputBorder(
-                                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                                    borderSide: BorderSide(color: Colors.black12),
-                                  ),
-                                  focusedBorder: const OutlineInputBorder(
-                                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                                    borderSide: BorderSide(color: Color.fromARGB(255, 20, 110, 184)),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                                ),
-                                style: GoogleFonts.notoSans(fontSize: 14, color: Colors.black87),
+                                suggestions: _locationSuggestions,
+                                hintText: 'Location or Country',
+                                prefixIcon: Icons.location_on_outlined,
+                                iconColor: Colors.redAccent,
+                                isMobile: true,
+                                isBordered: true,
+                                onSubmitted: () {
+                                  _performSearch(
+                                    query: _skillsController.text,
+                                    location: _locationController.text,
+                                    logSearch: true,
+                                  );
+                                },
                               ),
                               const SizedBox(height: 16),
                               SizedBox(
@@ -1493,12 +1767,13 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 40),
+                  FooterSection(onContactTap: () => _showContactDialog(context)),
                 ],
               ),
             ),
           )
         : Scaffold(
+            backgroundColor: const Color(0xFFF8FAFC),
             endDrawer: _buildDrawer(context),
             appBar: PreferredSize(
             // 1. Define the desired size
@@ -1507,7 +1782,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ), // Set new height here (e.g., 100)
             // 2. Place the AppBar inside the child property
             child: AppBar(
-              backgroundColor: Colors.white,
+              backgroundColor: const Color(0xFFF8FAFC),
               scrolledUnderElevation: 0,
               surfaceTintColor: Colors.transparent,
               flexibleSpace: FlexibleSpaceBar(
@@ -1530,25 +1805,24 @@ class _MyHomePageState extends State<MyHomePage> {
                         // mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           Positioned(
-                            top: 36,
+                            top: 27,
                             left: 0,
                             child: Image.asset(
                               'images/logo.png',
                               fit: BoxFit.contain,
-                              width: 54,
-                              height: 38,
+                              width: 58,
+                              height: 58,
                             ),
                           ),
 
                           Positioned(
-                            width: 150,
-                            left: 60,
-                            top: 35,
+                            width: 160,
+                            left: 66,
+                            top: 31,
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const SizedBox(height: 3),
                                 Text(
                                   'AVM Global',
                                   style: GoogleFonts.notoSans(
@@ -1561,8 +1835,8 @@ class _MyHomePageState extends State<MyHomePage> {
                                   'Consultants',
                                   style: GoogleFonts.notoSans(
                                     fontWeight: FontWeight.w500,
-                                    fontSize: 12,
-                                    color: Colors.black54,
+                                    fontSize: 13,
+                                    color: const Color(0xFF146EB8),
                                   ),
                                 ),
                               ],
@@ -1815,14 +2089,21 @@ class _MyHomePageState extends State<MyHomePage> {
                             const Icon(Icons.search, color: Colors.blueAccent, size: 24),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: TextField(
+                              child: _buildAutocompleteField(
                                 controller: _skillsController,
-                                decoration: InputDecoration(
-                                  hintText: 'Enter skills / designations / companies',
-                                  hintStyle: GoogleFonts.notoSans(color: Colors.black38, fontSize: 15),
-                                  border: InputBorder.none,
-                                ),
-                                style: GoogleFonts.notoSans(fontSize: 15, color: Colors.black87),
+                                suggestions: _skillsSuggestions,
+                                hintText: 'Enter skills / designations / companies',
+                                prefixIcon: Icons.search,
+                                iconColor: Colors.blueAccent,
+                                isMobile: false,
+                                isBordered: false,
+                                onSubmitted: () {
+                                  _performSearch(
+                                    query: _skillsController.text,
+                                    location: _locationController.text,
+                                    logSearch: true,
+                                  );
+                                },
                               ),
                             ),
                             Container(
@@ -1834,14 +2115,21 @@ class _MyHomePageState extends State<MyHomePage> {
                             const Icon(Icons.location_on_outlined, color: Colors.redAccent, size: 24),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: TextField(
+                              child: _buildAutocompleteField(
                                 controller: _locationController,
-                                decoration: InputDecoration(
-                                  hintText: 'Enter location / country',
-                                  hintStyle: GoogleFonts.notoSans(color: Colors.black38, fontSize: 15),
-                                  border: InputBorder.none,
-                                ),
-                                style: GoogleFonts.notoSans(fontSize: 15, color: Colors.black87),
+                                suggestions: _locationSuggestions,
+                                hintText: 'Enter location / country',
+                                prefixIcon: Icons.location_on_outlined,
+                                iconColor: Colors.redAccent,
+                                isMobile: false,
+                                isBordered: false,
+                                onSubmitted: () {
+                                  _performSearch(
+                                    query: _skillsController.text,
+                                    location: _locationController.text,
+                                    logSearch: true,
+                                  );
+                                },
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -2184,7 +2472,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ],
                 ),
-                SizedBox(height: h / 2),
+                FooterSection(onContactTap: () => _showContactDialog(context)),
               ],
             ),
           ),
@@ -3044,7 +3332,8 @@ class HorizontalJobSlider extends StatefulWidget {
 class _HorizontalJobSliderState extends State<HorizontalJobSlider> {
   late ScrollController _scrollController;
   Timer? _timer;
-  bool _isPaused = false;
+  bool _isUserDragging = false;
+  Timer? _resumeTimer;
   double _scrollOffset = 0.0;
 
   @override
@@ -3059,15 +3348,14 @@ class _HorizontalJobSliderState extends State<HorizontalJobSlider> {
   void _startAutoScroll() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 20), (timer) {
-      if (!mounted || !_scrollController.hasClients || _isPaused) return;
+      if (!mounted || !_scrollController.hasClients || _isUserDragging) return;
 
       final maxScroll = _scrollController.position.maxScrollExtent;
       if (maxScroll <= 0) return;
 
-      // Synchronize to support manual drag scrolling
       _scrollOffset = _scrollController.offset;
+      _scrollOffset += 0.4; // smooth slow scrolling rate
 
-      _scrollOffset += 0.4; // slow scrolling rate (approx 20 pixels per second)
       if (_scrollOffset >= maxScroll) {
         _scrollOffset = 0.0;
         _scrollController.jumpTo(0.0);
@@ -3077,9 +3365,54 @@ class _HorizontalJobSliderState extends State<HorizontalJobSlider> {
     });
   }
 
+  void _onDragStart(DragStartDetails details) {
+    _resumeTimer?.cancel();
+    setState(() {
+      _isUserDragging = true;
+    });
+  }
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    if (_scrollController.hasClients) {
+      final delta = details.primaryDelta ?? 0.0;
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final newOffset = (_scrollController.offset - delta).clamp(0.0, maxScroll);
+      _scrollController.jumpTo(newOffset);
+      _scrollOffset = newOffset;
+    }
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    _resumeTimer?.cancel();
+    _resumeTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        setState(() {
+          _isUserDragging = false;
+          if (_scrollController.hasClients) {
+            _scrollOffset = _scrollController.offset;
+          }
+        });
+      }
+    });
+  }
+
+  void _onPointerScroll(PointerScrollEvent event) {
+    if (_scrollController.hasClients) {
+      _resumeTimer?.cancel();
+      _isUserDragging = true;
+      final delta = event.scrollDelta.dx != 0 ? event.scrollDelta.dx : event.scrollDelta.dy;
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final newOffset = (_scrollController.offset + delta).clamp(0.0, maxScroll);
+      _scrollController.jumpTo(newOffset);
+      _scrollOffset = newOffset;
+      _onDragEnd(DragEndDetails());
+    }
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
+    _resumeTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -3088,7 +3421,7 @@ class _HorizontalJobSliderState extends State<HorizontalJobSlider> {
   Widget build(BuildContext context) {
     if (widget.jobs.isEmpty) return const SizedBox.shrink();
 
-    // Repeat the jobs list to make the scroll seamless
+    // Repeat the jobs list to make continuous scrolling infinite & smooth
     final displayJobs = [
       ...widget.jobs,
       ...widget.jobs,
@@ -3097,26 +3430,34 @@ class _HorizontalJobSliderState extends State<HorizontalJobSlider> {
     ];
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isPaused = true),
-      onExit: (_) => setState(() => _isPaused = false),
+      cursor: _isUserDragging ? SystemMouseCursors.grabbing : SystemMouseCursors.grab,
       child: SizedBox(
         height: 180, // height of our job card + padding
-        child: GestureDetector(
-          onTapDown: (_) => setState(() => _isPaused = true),
-          onTapUp: (_) => setState(() => _isPaused = false),
-          onTapCancel: () => setState(() => _isPaused = false),
-          child: ListView.builder(
-            controller: _scrollController,
-            scrollDirection: Axis.horizontal,
-            physics: const ClampingScrollPhysics(),
-            itemCount: displayJobs.length,
-            itemBuilder: (context, index) {
-              final job = displayJobs[index];
-              return Padding(
-                padding: const EdgeInsets.only(right: 16.0, top: 8.0, bottom: 8.0),
-                child: widget.cardBuilder(context, job),
-              );
-            },
+        child: Listener(
+          onPointerSignal: (pointerSignal) {
+            if (pointerSignal is PointerScrollEvent) {
+              _onPointerScroll(pointerSignal);
+            }
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragStart: _onDragStart,
+            onHorizontalDragUpdate: _onDragUpdate,
+            onHorizontalDragEnd: _onDragEnd,
+            onHorizontalDragCancel: () => _onDragEnd(DragEndDetails()),
+            child: ListView.builder(
+              controller: _scrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: displayJobs.length,
+              itemBuilder: (context, index) {
+                final job = displayJobs[index];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 16.0, top: 8.0, bottom: 8.0),
+                  child: widget.cardBuilder(context, job),
+                );
+              },
+            ),
           ),
         ),
       ),

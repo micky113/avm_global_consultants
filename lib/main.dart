@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
@@ -14,6 +15,16 @@ void main() async {
   runApp(const AVMGlobalApp());
 }
 
+class AppScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      };
+}
+
 class AVMGlobalApp extends StatelessWidget {
   const AVMGlobalApp({super.key});
 
@@ -22,6 +33,7 @@ class AVMGlobalApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'AVM Global Consultants | Overseas Recruitment & Careers Abroad',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: AppScrollBehavior(),
       routerConfig: MyAppRouter.router,
     );
   }

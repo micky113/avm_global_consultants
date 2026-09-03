@@ -732,6 +732,8 @@ class FirebaseService {
         link: job.link,
         name: job.name,
         employerId: job.employerId,
+        clientCompany: job.clientCompany,
+        status: job.status,
       );
 
       final index = _localJobs.indexWhere((j) => j.id == newJob.id);

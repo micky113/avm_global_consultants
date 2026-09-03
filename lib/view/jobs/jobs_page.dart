@@ -335,7 +335,7 @@ class _JobsPageState extends State<JobsPage> {
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(80.0),
         child: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: const Color(0xFFF8FAFC),
           elevation: 0,
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
@@ -350,10 +350,10 @@ class _JobsPageState extends State<JobsPage> {
               Image.asset(
                 'images/logo.png',
                 fit: BoxFit.contain,
-                width: isMobile ? 40 : 54,
-                height: isMobile ? 28 : 38,
+                width: isMobile ? 42 : 58,
+                height: isMobile ? 42 : 58,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -685,6 +685,7 @@ class _JobsPageState extends State<JobsPage> {
                 ),
                 child: TextField(
                   controller: _searchController,
+                  textInputAction: TextInputAction.search,
                   onChanged: (val) {
                     setState(() {
                       _searchQuery = val;
@@ -736,6 +737,53 @@ class _JobsPageState extends State<JobsPage> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildJobStatusBadge(String status) {
+    final isOpen = status.trim().isEmpty || status.trim().toLowerCase() == 'open';
+    final color = isOpen ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    final label = isOpen ? 'Open' : 'Closed';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.25), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              boxShadow: isOpen
+                  ? [
+                      BoxShadow(
+                        color: color.withOpacity(0.4),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      )
+                    ]
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: GoogleFonts.notoSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -811,20 +859,28 @@ class _JobsPageState extends State<JobsPage> {
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: themeColor.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      job.type,
-                      style: GoogleFonts.notoSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: themeColor,
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _buildJobStatusBadge(job.status),
+                      const SizedBox(height: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: themeColor.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          job.type,
+                          style: GoogleFonts.notoSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: themeColor,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -1004,7 +1060,9 @@ class _JobsPageState extends State<JobsPage> {
                     Wrap(
                       spacing: 16,
                       runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
+                        _buildJobStatusBadge(job.status),
                         _buildDetailBadge(Icons.location_on_rounded, job.location),
                         _buildDetailBadge(Icons.work_rounded, job.type),
                         _buildDetailBadge(Icons.monetization_on_rounded, job.salaryRange),
@@ -1038,24 +1096,26 @@ class _JobsPageState extends State<JobsPage> {
                         height: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    SelectableText(
-                      'Requirements',
-                      style: GoogleFonts.notoSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: darkBlue,
+                    if (job.requirements.trim().isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      SelectableText(
+                        'Requirements',
+                        style: GoogleFonts.notoSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: darkBlue,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    SelectableText(
-                      job.requirements,
-                      style: GoogleFonts.notoSans(
-                        fontSize: 14,
-                        color: Colors.black87,
-                        height: 1.5,
+                      const SizedBox(height: 8),
+                      SelectableText(
+                        job.requirements,
+                        style: GoogleFonts.notoSans(
+                          fontSize: 14,
+                          color: Colors.black87,
+                          height: 1.5,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -1162,6 +1222,8 @@ class _JobsPageState extends State<JobsPage> {
                           ),
                         ),
                         const SizedBox(height: 16),
+                        _buildJobStatusBadge(job.status),
+                        const SizedBox(height: 12),
                         _buildDetailBadge(Icons.location_on_rounded, job.location),
                         const SizedBox(height: 8),
                         _buildDetailBadge(Icons.work_rounded, job.type),
@@ -1187,24 +1249,26 @@ class _JobsPageState extends State<JobsPage> {
                             height: 1.4,
                           ),
                         ),
-                        const SizedBox(height: 20),
-                        SelectableText(
-                          'Requirements',
-                          style: GoogleFonts.notoSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: darkBlue,
+                        if (job.requirements.trim().isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          SelectableText(
+                            'Requirements',
+                            style: GoogleFonts.notoSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: darkBlue,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        SelectableText(
-                          job.requirements,
-                          style: GoogleFonts.notoSans(
-                            fontSize: 13,
-                            color: Colors.black87,
-                            height: 1.4,
+                          const SizedBox(height: 8),
+                          SelectableText(
+                            job.requirements,
+                            style: GoogleFonts.notoSans(
+                              fontSize: 13,
+                              color: Colors.black87,
+                              height: 1.4,
+                            ),
                           ),
-                        ),
+                        ],
                         const SizedBox(height: 32),
                         Row(
                           children: [

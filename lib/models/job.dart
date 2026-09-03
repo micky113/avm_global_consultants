@@ -15,6 +15,8 @@ class Job {
   final String link;
   final String name;
   final String employerId;
+  final String clientCompany;
+  final String status; // 'Open', 'Closed'
 
   const Job({
     required this.id,
@@ -31,6 +33,8 @@ class Job {
     this.link = '',
     this.name = '',
     this.employerId = '',
+    this.clientCompany = '',
+    this.status = 'Open',
   });
 
   factory Job.fromMap(String id, Map<String, dynamic> map) {
@@ -51,6 +55,8 @@ class Job {
       link: map['link'] ?? '',
       name: map['name'] ?? '',
       employerId: map['employerId'] ?? '',
+      clientCompany: map['clientCompany'] ?? '',
+      status: map['status'] ?? 'Open',
     );
   }
 
@@ -69,6 +75,8 @@ class Job {
       'link': link,
       'name': name,
       'employerId': employerId,
+      'clientCompany': clientCompany,
+      'status': status,
     };
   }
 }
