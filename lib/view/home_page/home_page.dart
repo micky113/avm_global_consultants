@@ -48,6 +48,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
   late final ScrollController _desktopScrollController;
   late final FocusNode _desktopFocusNode;
+  late final FocusNode _desktopSkillsFocusNode;
+  late final FocusNode _desktopLocationFocusNode;
+  late final FocusNode _mobileSkillsFocusNode;
+  late final FocusNode _mobileLocationFocusNode;
 
   final _skillsController = TextEditingController();
   final _locationController = TextEditingController();
@@ -109,6 +113,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _buildAutocompleteField({
     required TextEditingController controller,
+    required FocusNode focusNode,
     required List<String> suggestions,
     required String hintText,
     required IconData prefixIcon,
@@ -119,7 +124,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }) {
     return RawAutocomplete<String>(
       textEditingController: controller,
-      focusNode: FocusNode(),
+      focusNode: focusNode,
+      displayStringForOption: (String option) => option,
       optionsBuilder: (TextEditingValue textEditingValue) {
         if (textEditingValue.text.trim().isEmpty) {
           return const Iterable<String>.empty();
@@ -133,14 +139,14 @@ class _MyHomePageState extends State<MyHomePage> {
         controller.text = selection;
         onSubmitted();
       },
-      fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+      fieldViewBuilder: (context, textEditingController, node, onFieldSubmitted) {
         return ValueListenableBuilder<TextEditingValue>(
           valueListenable: textEditingController,
           builder: (context, value, _) {
             final bool hasText = value.text.isNotEmpty;
             return TextField(
               controller: textEditingController,
-              focusNode: focusNode,
+              focusNode: node,
               textInputAction: TextInputAction.search,
               onSubmitted: (_) => onSubmitted(),
               decoration: InputDecoration(
@@ -194,13 +200,13 @@ class _MyHomePageState extends State<MyHomePage> {
             color: Colors.white,
             child: Container(
               width: isMobile
-                  ? (MediaQuery.of(context).size.width - 72).clamp(240.0, 450.0)
+                  ? (MediaQuery.of(context).size.width - 64).clamp(260.0, 500.0)
                   : 340,
               constraints: const BoxConstraints(maxHeight: 240),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.black12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
@@ -214,7 +220,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       onTap: () => onSelected(option),
                       hoverColor: const Color(0xFF146EB4).withValues(alpha: 0.08),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                         child: Row(
                           children: [
                             Icon(prefixIcon, size: 16, color: iconColor.withValues(alpha: 0.85)),
@@ -1029,6 +1035,10 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     _desktopScrollController = ScrollController();
     _desktopFocusNode = FocusNode();
+    _desktopSkillsFocusNode = FocusNode();
+    _desktopLocationFocusNode = FocusNode();
+    _mobileSkillsFocusNode = FocusNode();
+    _mobileLocationFocusNode = FocusNode();
 
     // Dynamically populate suggestion hints from live Firestore jobs
     _jobsSubscription = FirebaseService.instance.getJobsStream().listen((jobs) {
@@ -1089,6 +1099,10 @@ class _MyHomePageState extends State<MyHomePage> {
     _jobsSubscription?.cancel();
     _desktopScrollController.dispose();
     _desktopFocusNode.dispose();
+    _desktopSkillsFocusNode.dispose();
+    _desktopLocationFocusNode.dispose();
+    _mobileSkillsFocusNode.dispose();
+    _mobileLocationFocusNode.dispose();
     _skillsController.dispose();
     _locationController.dispose();
     super.dispose();
@@ -1287,10 +1301,10 @@ class _MyHomePageState extends State<MyHomePage> {
                   Image.asset(
                     'images/logo.png',
                     fit: BoxFit.contain,
-                    width: w < 600 ? 42 : 58,
-                    height: w < 600 ? 42 : 58,
+                    width: w < 600 ? 48 : 64,
+                    height: w < 600 ? 48 : 64,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1298,17 +1312,18 @@ class _MyHomePageState extends State<MyHomePage> {
                       Text(
                         'AVM Global',
                         style: GoogleFonts.notoSans(
-                          fontSize: w < 600 ? 16 : 18,
-                          fontWeight: FontWeight.bold,
+                          fontSize: w < 600 ? 18 : 22,
+                          fontWeight: FontWeight.w800,
                           color: const Color(0xFF146EB8),
                         ),
                       ),
                       Text(
                         'Consultants',
                         style: GoogleFonts.notoSans(
-                          fontWeight: FontWeight.w500,
-                          fontSize: w < 600 ? 11 : 12,
+                          fontWeight: FontWeight.w600,
+                          fontSize: w < 600 ? 12 : 13.5,
                           color: Colors.black54,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ],
@@ -1386,6 +1401,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             children: [
                               _buildAutocompleteField(
                                 controller: _skillsController,
+                                focusNode: _mobileSkillsFocusNode,
                                 suggestions: _skillsSuggestions,
                                 hintText: 'Skills, designations, companies',
                                 prefixIcon: Icons.search,
@@ -1403,6 +1419,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               const SizedBox(height: 12),
                               _buildAutocompleteField(
                                 controller: _locationController,
+                                focusNode: _mobileLocationFocusNode,
                                 suggestions: _locationSuggestions,
                                 hintText: 'Location or Country',
                                 prefixIcon: Icons.location_on_outlined,
@@ -1728,20 +1745,20 @@ class _MyHomePageState extends State<MyHomePage> {
                         // mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           Positioned(
-                            top: 27,
+                            top: 24,
                             left: 0,
                             child: Image.asset(
                               'images/logo.png',
                               fit: BoxFit.contain,
-                              width: 58,
-                              height: 58,
+                              width: 64,
+                              height: 64,
                             ),
                           ),
 
                           Positioned(
-                            width: 160,
-                            left: 66,
-                            top: 31,
+                            width: 200,
+                            left: 74,
+                            top: 26,
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1749,17 +1766,18 @@ class _MyHomePageState extends State<MyHomePage> {
                                 Text(
                                   'AVM Global',
                                   style: GoogleFonts.notoSans(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
                                     color: const Color(0xFF146EB8),
                                   ),
                                 ),
                                 Text(
                                   'Consultants',
                                   style: GoogleFonts.notoSans(
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13.5,
                                     color: const Color(0xFF146EB8),
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
                               ],
@@ -2026,6 +2044,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             Expanded(
                               child: _buildAutocompleteField(
                                 controller: _skillsController,
+                                focusNode: _desktopSkillsFocusNode,
                                 suggestions: _skillsSuggestions,
                                 hintText: 'Enter skills / designations / companies',
                                 prefixIcon: Icons.search,
@@ -2052,6 +2071,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             Expanded(
                               child: _buildAutocompleteField(
                                 controller: _locationController,
+                                focusNode: _desktopLocationFocusNode,
                                 suggestions: _locationSuggestions,
                                 hintText: 'Enter location / country',
                                 prefixIcon: Icons.location_on_outlined,
