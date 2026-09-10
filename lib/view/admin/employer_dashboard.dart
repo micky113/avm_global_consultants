@@ -469,11 +469,12 @@ class _EmployerDashboardDialogState extends State<EmployerDashboardDialog> {
     final newGroupUrlCtrl = TextEditingController();
     bool isAddingGroup = false;
 
-    final jobUrl = (job.link.isNotEmpty &&
-            (job.link.startsWith('http://') || job.link.startsWith('https://')))
-        ? job.link
-        : (kIsWeb && html.window.location.origin.isNotEmpty
-            ? '${html.window.location.origin}/jobs?id=${job.id}'
+    final baseUri = Uri.base;
+    final href = baseUri.toString();
+    final String jobUrl = href.contains('/#/')
+        ? '${baseUri.origin}/#/jobs?id=${job.id}'
+        : (baseUri.origin.isNotEmpty
+            ? '${baseUri.origin}/jobs?id=${job.id}'
             : 'https://avmglobal-consultants-113.web.app/jobs?id=${job.id}');
 
     final postText = '''🚀 WE ARE HIRING! 🚀
