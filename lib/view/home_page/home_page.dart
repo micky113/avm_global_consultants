@@ -9,6 +9,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:avm_global_web/models/job.dart';
 import 'package:avm_global_web/services/firebase_service.dart';
+import 'package:avm_global_web/services/notification_service.dart';
+import 'package:avm_global_web/widgets/job_alert_banner.dart';
 import 'package:avm_global_web/view/admin/admin_dashboard.dart';
 import 'package:avm_global_web/view/admin/employer_dashboard.dart';
 import 'package:avm_global_web/view/home_page/widgets/animated_card/animated_card.dart';
@@ -55,6 +57,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   final _skillsController = TextEditingController();
   final _locationController = TextEditingController();
+
+  Timer? _searchDebounceTimer;
+  OverlayEntry? _alertBannerEntry;
 
   StreamSubscription? _jobsSubscription;
   final List<String> _skillsSuggestions = [
@@ -701,39 +706,57 @@ class _MyHomePageState extends State<MyHomePage> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Full Name',
-                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        // Full Name
+                        RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87),
+                            children: const [
+                              TextSpan(text: 'Full Name '),
+                              TextSpan(text: '*', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: nameCtrl,
                           decoration: InputDecoration(
-                            hintText: 'Enter your name',
+                            hintText: 'Enter your full name',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           ),
-                          validator: (val) => val == null || val.trim().isEmpty ? 'Please enter your name' : null,
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Please enter your full name';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          'Email Address',
-                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+
+                        // Email
+                        RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87),
+                            children: const [
+                              TextSpan(text: 'Email Address '),
+                              TextSpan(text: '*', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: emailCtrl,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
-                            hintText: 'Enter your email id',
+                            hintText: 'Enter your email id (e.g. name@example.com)',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           ),
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) {
-                              return 'Please enter your email';
+                              return 'Email address is required';
                             }
-                            final emailReg = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                            final emailReg = RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$');
                             if (!emailReg.hasMatch(val.trim())) {
                               return 'Please enter a valid email address';
                             }
@@ -741,25 +764,48 @@ class _MyHomePageState extends State<MyHomePage> {
                           },
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          'Contact Number',
-                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+
+                        // Contact Number
+                        RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87),
+                            children: const [
+                              TextSpan(text: 'Contact Number '),
+                              TextSpan(text: '*', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: phoneCtrl,
                           keyboardType: TextInputType.phone,
                           decoration: InputDecoration(
-                            hintText: 'Enter your phone number',
+                            hintText: 'Enter your contact number with country code',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           ),
-                          validator: (val) => val == null || val.trim().isEmpty ? 'Please enter your phone number' : null,
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Contact number is required';
+                            }
+                            final phoneDigits = val.replaceAll(RegExp(r'[^0-9]'), '');
+                            if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+                              return 'Please enter a valid contact number (7-15 digits)';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          'Upload Resume (PDF, DOC)',
-                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+
+                        // Upload Resume
+                        RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87),
+                            children: const [
+                              TextSpan(text: 'Upload Resume (PDF, DOC) '),
+                              TextSpan(text: '*', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 8),
                         if (resumeName == null) ...[
@@ -837,19 +883,34 @@ class _MyHomePageState extends State<MyHomePage> {
                           setDialogState(() => isSubmitting = true);
 
                           try {
+                            String? fcmToken;
+                            try {
+                              fcmToken = await NotificationService.instance.getDeviceToken();
+                            } catch (_) {}
+
                             await FirebaseService.instance.submitJobApplication(
                               jobId: job.id,
                               jobTitle: job.title,
+                              jobCategory: job.type.isNotEmpty ? job.type : job.title,
                               name: nameCtrl.text.trim(),
                               email: emailCtrl.text.trim(),
                               phone: phoneCtrl.text.trim(),
+                              fcmToken: fcmToken,
                               resumeFileName: resumeName,
                               resumeFileBytes: resumeBytes,
                             );
 
+                            await NotificationService.instance.registerApplicantNotification(
+                              phone: phoneCtrl.text.trim(),
+                              jobCategory: job.type.isNotEmpty ? job.type : job.title,
+                              jobTitle: job.title,
+                              name: nameCtrl.text.trim(),
+                              email: emailCtrl.text.trim(),
+                            );
+
                             if (context.mounted) {
                               Navigator.pop(context);
-                              _showSuccessDialog(context, job.title, job.company);
+                              _showSuccessDialog(context, job.title, job.company, emailCtrl.text.trim());
                             }
                           } catch (e) {
                             setDialogState(() => isSubmitting = false);
@@ -885,8 +946,9 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  void _showSuccessDialog(BuildContext context, String jobTitle, String company) {
+  void _showSuccessDialog(BuildContext context, String jobTitle, String company, String applicantEmail) {
     const darkBlue = Color(0xFF0A192F);
+    const themeColor = Color(0xFF146EB8);
     showDialog(
       context: context,
       builder: (context) {
@@ -894,20 +956,54 @@ class _MyHomePageState extends State<MyHomePage> {
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(
-            'Application Successful',
-            style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, color: darkBlue),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green[50],
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle_rounded,
+                  color: Colors.green,
+                  size: 56,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Application Submitted!',
+                style: GoogleFonts.notoSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: darkBlue,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You have successfully applied for the position of $jobTitle at $company.\n\nA confirmation email has been sent to $applicantEmail. Our recruitment team will review your profile and get back to you shortly.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.notoSans(
+                  fontSize: 14,
+                  color: Colors.black54,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: themeColor,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Great', style: TextStyle(color: Colors.white)),
+              ),
+            ],
           ),
-          content: Text(
-            'Your application for "$jobTitle" at $company has been submitted successfully.',
-            style: GoogleFonts.notoSans(fontSize: 14, color: Colors.black87),
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
         );
       },
     );
@@ -1375,7 +1471,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          'Government-approved portal for careers in Europe, Canada, Gulf & Australia.',
+                          'Government-approved portal for careers in India, Europe, Canada, Gulf & Australia.',
                           style: GoogleFonts.notoSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -2011,7 +2107,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        '5,000+ open positions across Europe, Middle East, Canada, and Australia.',
+                        '5,000+ open positions across India, Europe, Middle East, Canada, and Australia.',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.notoSans(
                           fontSize: 18,

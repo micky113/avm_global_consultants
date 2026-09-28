@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:avm_global_web/firebase_options.dart';
 import 'package:avm_global_web/routes/app_route_config.dart';
+import 'package:avm_global_web/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,6 +12,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await NotificationService.instance.initialize();
 
   runApp(const AVMGlobalApp());
 }

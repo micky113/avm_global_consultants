@@ -1528,161 +1528,246 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
                     ),
                     child: Padding(
                       padding: EdgeInsets.all(isMobilePanel ? 14 : 20),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: widget.themeColor.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(Icons.work_outline_rounded, color: widget.themeColor, size: 28),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  job.title,
-                                  style: GoogleFonts.notoSans(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(isMobilePanel ? 10 : 12),
+                                decoration: BoxDecoration(
+                                  color: widget.themeColor.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                const SizedBox(height: 4),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 4,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                child: Icon(Icons.work_outline_rounded, color: widget.themeColor, size: isMobilePanel ? 22 : 28),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      '${job.company}  •  ${job.location}',
-                                      style: GoogleFonts.notoSans(fontSize: 13, color: Colors.black54),
+                                      job.title,
+                                      style: GoogleFonts.notoSans(
+                                        fontSize: isMobilePanel ? 15 : 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
                                     ),
-                                    _buildJobStatusBadge(job.status),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[100],
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        job.type,
-                                        style: GoogleFonts.notoSans(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
-                                      ),
+                                    const SizedBox(height: 4),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 4,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      children: [
+                                        Text(
+                                          '${job.company}  •  ${job.location}',
+                                          style: GoogleFonts.notoSans(fontSize: 12.5, color: Colors.black54),
+                                        ),
+                                        _buildJobStatusBadge(job.status),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[100],
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            job.type,
+                                            style: GoogleFonts.notoSans(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                                if (job.phone.isNotEmpty || job.email.isNotEmpty || job.link.isNotEmpty || job.name.isNotEmpty || job.clientCompany.isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 16,
-                                    runSpacing: 6,
-                                    crossAxisAlignment: WrapCrossAlignment.center,
+                              ),
+                              if (!isMobilePanel) ...[
+                                const SizedBox(width: 12),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.share_outlined),
+                                      color: const Color(0xFF1877F2),
+                                      tooltip: 'Share Job on Facebook Group',
+                                      onPressed: () => _showFacebookShareDialog(job),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.edit_outlined),
+                                      color: widget.themeColor,
+                                      tooltip: 'Edit Job',
+                                      onPressed: () => _addEditJobDialog(job),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline_rounded),
+                                      color: Colors.redAccent,
+                                      tooltip: 'Delete Job',
+                                      onPressed: () => _confirmDeleteJob(job.id),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                          if (job.phone.isNotEmpty || job.email.isNotEmpty || job.link.isNotEmpty || job.name.isNotEmpty || job.clientCompany.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                if (job.clientCompany.isNotEmpty)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      if (job.clientCompany.isNotEmpty)
+                                      Icon(Icons.business_outlined, size: 14, color: widget.themeColor.withOpacity(0.7)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Client: ${job.clientCompany}',
+                                        style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                if (job.name.isNotEmpty)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.person_outline_rounded, size: 14, color: widget.themeColor.withOpacity(0.7)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        job.name,
+                                        style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                if (job.phone.isNotEmpty)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.phone_outlined, size: 14, color: widget.themeColor.withOpacity(0.7)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        job.phone,
+                                        style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                if (job.email.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF146EB8).withValues(alpha: 0.07),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: const Color(0xFF146EB8).withValues(alpha: 0.2)),
+                                    ),
+                                    child: Wrap(
+                                      spacing: 8,
+                                      runSpacing: 4,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      children: [
                                         Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(Icons.business_outlined, size: 14, color: widget.themeColor.withOpacity(0.7)),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'Client: ${job.clientCompany}',
-                                              style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
-                                            ),
-                                          ],
-                                        ),
-                                      if (job.name.isNotEmpty)
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.person_outline_rounded, size: 14, color: widget.themeColor.withOpacity(0.7)),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              job.name,
-                                              style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
-                                            ),
-                                          ],
-                                        ),
-                                      if (job.phone.isNotEmpty)
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.phone_outlined, size: 14, color: widget.themeColor.withOpacity(0.7)),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              job.phone,
-                                              style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
-                                            ),
-                                          ],
-                                        ),
-                                      if (job.email.isNotEmpty)
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.email_outlined, size: 14, color: widget.themeColor.withOpacity(0.7)),
+                                            Icon(Icons.email_outlined, size: 14, color: widget.themeColor),
                                             const SizedBox(width: 4),
                                             Text(
                                               job.email,
-                                              style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                                              style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w600),
                                             ),
                                           ],
                                         ),
-                                      if (job.link.isNotEmpty)
-                                        InkWell(
-                                          onTap: () {
-                                            if (kIsWeb) {
-                                              js.context.callMethod('open', [job.link]);
-                                            }
-                                          },
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(Icons.link_rounded, size: 14, color: widget.themeColor),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                'View Link',
-                                                style: GoogleFonts.notoSans(
-                                                  fontSize: 12,
-                                                  color: widget.themeColor,
-                                                  fontWeight: FontWeight.bold,
-                                                  decoration: TextDecoration.underline,
-                                                ),
+                                        Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: () => _showJobInquiryDialog(job),
+                                            borderRadius: BorderRadius.circular(6),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: widget.themeColor,
+                                                borderRadius: BorderRadius.circular(6),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: widget.themeColor.withValues(alpha: 0.35),
+                                                    blurRadius: 4,
+                                                    offset: const Offset(0, 1),
+                                                  ),
+                                                ],
                                               ),
-                                            ],
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Icons.send_rounded, size: 11, color: Colors.white),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    'Ask if Open',
+                                                    style: GoogleFonts.notoSans(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ],
+                                if (job.link.isNotEmpty)
+                                  InkWell(
+                                    onTap: () {
+                                      if (kIsWeb) {
+                                        js.context.callMethod('open', [job.link]);
+                                      }
+                                    },
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.link_rounded, size: 14, color: widget.themeColor),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'View Link',
+                                          style: GoogleFonts.notoSans(
+                                            fontSize: 12,
+                                            color: widget.themeColor,
+                                            fontWeight: FontWeight.bold,
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                               ],
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.share_outlined),
-                                color: const Color(0xFF1877F2),
-                                tooltip: 'Share Job on Facebook Group',
-                                onPressed: () => _showFacebookShareDialog(job),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.edit_outlined),
-                                color: widget.themeColor,
-                                tooltip: 'Edit Job',
-                                onPressed: () => _addEditJobDialog(job),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded),
-                                color: Colors.redAccent,
-                                tooltip: 'Delete Job',
-                                onPressed: () => _confirmDeleteJob(job.id),
-                              ),
-                            ],
-                          ),
+                          ],
+                          if (isMobilePanel) ...[
+                            const SizedBox(height: 10),
+                            const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton.icon(
+                                  onPressed: () => _showFacebookShareDialog(job),
+                                  icon: const Icon(Icons.share_outlined, size: 16, color: Color(0xFF1877F2)),
+                                  label: Text('Share', style: GoogleFonts.notoSans(fontSize: 12, color: const Color(0xFF1877F2))),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () => _addEditJobDialog(job),
+                                  icon: Icon(Icons.edit_outlined, size: 16, color: widget.themeColor),
+                                  label: Text('Edit', style: GoogleFonts.notoSans(fontSize: 12, color: widget.themeColor)),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline_rounded, size: 20, color: Colors.redAccent),
+                                  tooltip: 'Delete Job',
+                                  onPressed: () => _confirmDeleteJob(job.id),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -1695,6 +1780,339 @@ class _AdminDashboardDialogState extends State<AdminDashboardDialog> {
       ],
     );
   }
+
+  void _showJobInquiryDialog(Job job) {
+    final contactGreeting = job.name.isNotEmpty ? 'Dear ' + job.name + ',' : 'Dear Hiring Team,';
+    final initialMessage = contactGreeting + '\n\n' +
+      'Greetings from AVM Global Consultants.\n\n' +
+      'We are writing to follow up regarding the position of "' + job.title + '" at your company.\n\n' +
+      'Could you kindly let us know if this position is still open and actively accepting candidate applications?\n\n' +
+      'If the position has already been filled or is no longer active, please let us know so we can update our recruitment records accordingly.\n\n' +
+      'Thank you!\n\n' +
+      'Best regards,\n' +
+      'Recruitment & Placement Team\n' +
+      'AVM Global Consultants\n' +
+      'Email: vishal@avmglobalconsultants.com\n' +
+      'Website: https://avmglobalconsultants.com';
+
+    final messageController = TextEditingController(text: initialMessage);
+    final emailController = TextEditingController(text: job.email);
+    bool isSending = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final screenWidth = MediaQuery.of(context).size.width;
+            final isMobileModal = screenWidth < 600;
+
+            return Dialog(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              insetPadding: EdgeInsets.symmetric(
+                horizontal: isMobileModal ? 12.0 : 40.0,
+                vertical: isMobileModal ? 16.0 : 24.0,
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 580,
+                  maxHeight: MediaQuery.of(context).size.height * 0.9,
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(isMobileModal ? 16.0 : 24.0),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: widget.themeColor.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.mark_email_unread_rounded, color: widget.themeColor, size: isMobileModal ? 20 : 24),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Inquire Job Status',
+                                    style: GoogleFonts.notoSans(
+                                      fontSize: isMobileModal ? 16 : 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  Text(
+                                    job.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.notoSans(
+                                      fontSize: 12,
+                                      color: widget.themeColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 20, color: Colors.black45),
+                              onPressed: () => Navigator.pop(dialogContext),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                        const SizedBox(height: 16),
+
+                        // From / To fields
+                        if (isMobileModal) ...[
+                          Text(
+                            'From:',
+                            style: GoogleFonts.notoSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black54),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8F9FA),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFE0E0E0)),
+                            ),
+                            child: Text(
+                              'vishal@avmglobalconsultants.com',
+                              style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'To:',
+                            style: GoogleFonts.notoSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black54),
+                          ),
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: emailController,
+                            style: GoogleFonts.notoSans(fontSize: 12),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              filled: true,
+                              fillColor: const Color(0xFFF8F9FA),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE0E0E0))),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE0E0E0))),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: widget.themeColor, width: 1.5)),
+                            ),
+                          ),
+                        ] else ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'From:',
+                                      style: GoogleFonts.notoSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black54),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF8F9FA),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: const Color(0xFFE0E0E0)),
+                                      ),
+                                      child: Text(
+                                        'vishal@avmglobalconsultants.com',
+                                        style: GoogleFonts.notoSans(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w500),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'To:',
+                                      style: GoogleFonts.notoSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black54),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    TextField(
+                                      controller: emailController,
+                                      style: GoogleFonts.notoSans(fontSize: 12),
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                        filled: true,
+                                        fillColor: const Color(0xFFF8F9FA),
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE0E0E0))),
+                                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE0E0E0))),
+                                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: widget.themeColor, width: 1.5)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+
+                        // Message area
+                        Text(
+                          'Message Body:',
+                          style: GoogleFonts.notoSans(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black54),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: messageController,
+                          maxLines: 8,
+                          style: GoogleFonts.notoSans(fontSize: 12.5, height: 1.45),
+                          decoration: InputDecoration(
+                            hintText: 'Type inquiry email...',
+                            filled: true,
+                            fillColor: const Color(0xFFFDFDFD),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD0D7DE))),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD0D7DE))),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: widget.themeColor, width: 1.5)),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Action Buttons
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: isSending ? null : () => Navigator.pop(dialogContext),
+                              child: Text('Cancel', style: GoogleFonts.notoSans(color: Colors.black54)),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: widget.themeColor,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(horizontal: isMobileModal ? 16 : 20, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              onPressed: isSending
+                                  ? null
+                                  : () async {
+                                      final targetEmail = emailController.text.trim();
+                                      final text = messageController.text.trim();
+
+                                      if (targetEmail.isEmpty) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Please provide a recipient email address.')),
+                                        );
+                                        return;
+                                      }
+
+                                      setDialogState(() {
+                                        isSending = true;
+                                      });
+
+                                      try {
+                                        await FirebaseFirestore.instance.collection('job_inquiries').add({
+                                          'jobId': job.id,
+                                          'jobTitle': job.title,
+                                          'company': job.company,
+                                          'location': job.location,
+                                          'recipientName': job.name,
+                                          'recipientEmail': targetEmail,
+                                          'senderEmail': 'vishal@avmglobalconsultants.com',
+                                          'message': text,
+                                          'status': 'sent',
+                                          'createdAt': FieldValue.serverTimestamp(),
+                                        });
+
+                                        if (kIsWeb) {
+                                          try {
+                                            await html.HttpRequest.request(
+                                              'https://sendjobinquiryemail-pjegtwmmwq-uc.a.run.app',
+                                              method: 'POST',
+                                              sendData: jsonEncode({
+                                                'recipientEmail': targetEmail,
+                                                'recipientName': job.name,
+                                                'jobTitle': job.title,
+                                                'company': job.company,
+                                                'location': job.location,
+                                                'customMessage': text,
+                                              }),
+                                              requestHeaders: {'Content-Type': 'application/json'},
+                                            );
+                                          } catch (httpErr) {
+                                            debugPrint('Direct HTTP email dispatch fallback: $httpErr');
+                                          }
+                                        }
+
+                                        if (mounted) {
+                                          Navigator.pop(dialogContext);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Row(
+                                                children: [
+                                                  const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(child: Text('Inquiry email queued to $targetEmail')),
+                                                ],
+                                              ),
+                                              backgroundColor: Colors.green.shade700,
+                                              behavior: SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        setDialogState(() {
+                                          isSending = false;
+                                        });
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Failed to send: $e'),
+                                              backgroundColor: Colors.redAccent,
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                              icon: isSending
+                                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : const Icon(Icons.send_rounded, size: 15),
+                              label: Text(
+                                isSending ? 'Sending...' : 'Send Inquiry Email',
+                                style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
 
   void _showFacebookShareDialog(Job job) {
     // Load list of target Facebook groups

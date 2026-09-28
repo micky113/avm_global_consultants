@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/testimonial.dart';
@@ -132,14 +134,22 @@ class _TestimonialsSectionState extends State<TestimonialsSection> {
             title: 'Job Seekers',
             icon: Icons.person_search_rounded,
             isSelected: _activeTab == 'job_seeker',
-            onTap: () => setState(() => _activeTab = 'job_seeker'),
+            onTap: () {
+              setState(() {
+                _activeTab = 'job_seeker';
+              });
+            },
           ),
           const SizedBox(width: 8),
           _buildTabButton(
             title: 'Businesses / Employers',
             icon: Icons.business_center_rounded,
             isSelected: _activeTab == 'business',
-            onTap: () => setState(() => _activeTab = 'business'),
+            onTap: () {
+              setState(() {
+                _activeTab = 'business';
+              });
+            },
           ),
         ],
       ),
@@ -237,13 +247,12 @@ class _TestimonialsSectionState extends State<TestimonialsSection> {
   @override
   Widget build(BuildContext context) {
     final bool isMobile = Responsive.isMobile(context);
-    final bool isTablet = Responsive.isTablet(context);
 
     return Container(
       width: double.infinity,
       color: const Color(0xFFF8FAFC), // Alternating background to Off-White
       padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 20.0 : 60.0,
+        horizontal: isMobile ? 16.0 : 60.0,
         vertical: 80.0,
       ),
       child: Center(
@@ -253,10 +262,10 @@ class _TestimonialsSectionState extends State<TestimonialsSection> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Header
-              Text(
+              const Text(
                 'TESTIMONIALS',
                 style: TextStyle(
-                  color: const Color(0xFFD4AF37),
+                  color: Color(0xFFD4AF37),
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                   letterSpacing: 2,
@@ -288,7 +297,7 @@ class _TestimonialsSectionState extends State<TestimonialsSection> {
               _buildCategoryTabs(),
               const SizedBox(height: 40),
 
-              // Testimonials Stream Grid (Part A)
+              // Testimonials Continuous Horizontal Marquee Slider
               StreamBuilder<List<Testimonial>>(
                 stream: FirebaseService.instance.getTestimonialsStream(),
                 builder: (context, snapshot) {
@@ -331,38 +340,16 @@ class _TestimonialsSectionState extends State<TestimonialsSection> {
                     );
                   }
 
-                  if (isMobile) {
-                    return Column(
-                      children: filteredTestimonials
-                          .take(3)
-                          .map((item) => Padding(
-                                padding: const EdgeInsets.only(bottom: 24.0),
-                                child: _testimonialCard(item, isConstrained: false),
-                              ))
-                          .toList(),
-                    );
-                  }
-
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: filteredTestimonials.length > 3 ? 3 : filteredTestimonials.length, // Limit to top 3
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: isTablet ? 2 : 3,
-                      crossAxisSpacing: 24,
-                      mainAxisSpacing: 24,
-                      mainAxisExtent: 280, // Fixed height to prevent overflow (increased from 260 for avatar row)
-                    ),
-                    itemBuilder: (context, index) {
-                      final item = filteredTestimonials[index];
-                      return _testimonialCard(item);
-                    },
+                  return HorizontalTestimonialSlider(
+                    key: ValueKey(_activeTab),
+                    testimonials: filteredTestimonials,
+                    isMobile: isMobile,
                   );
                 },
               ),
               const SizedBox(height: 80),
 
-              // Leave a Review Panel (Part B)
+              // Leave a Review Panel
               Container(
                 width: double.infinity,
                 constraints: const BoxConstraints(maxWidth: 800),
@@ -642,184 +629,6 @@ class _TestimonialsSectionState extends State<TestimonialsSection> {
     );
   }
 
-  Widget _buildAvatar(Testimonial review) {
-    if (review.imageUrl != null && review.imageUrl!.isNotEmpty) {
-      if (review.imageUrl!.startsWith('data:image')) {
-        try {
-          final base64Str = review.imageUrl!.split(',').last;
-          final bytes = base64Decode(base64Str);
-          return Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-            child: ClipOval(
-              child: Image.memory(
-                bytes,
-                width: 42,
-                height: 42,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => _buildDefaultAvatar(review.name),
-              ),
-            ),
-          );
-        } catch (_) {
-          // Fallback if parsing fails
-        }
-      } else {
-        return Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
-          child: ClipOval(
-            child: Image.network(
-              review.imageUrl!,
-              width: 42,
-              height: 42,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                // If it fails to load (e.g. CORS block), fall back to default initials
-                return _buildDefaultAvatar(review.name);
-              },
-            ),
-          ),
-        );
-      }
-    }
-    return _buildDefaultAvatar(review.name);
-  }
-
-  Widget _buildDefaultAvatar(String name) {
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-    return Container(
-      width: 42,
-      height: 42,
-      decoration: const BoxDecoration(
-        color: Color(0xFF0A192F),
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        initial,
-        style: const TextStyle(
-          color: Color(0xFFD4AF37),
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-        ),
-      ),
-    );
-  }
-
-  Widget _testimonialCard(Testimonial review, {bool isConstrained = true}) {
-    final textWidget = Text(
-      review.reviewText,
-      style: TextStyle(
-        fontSize: 14,
-        color: Colors.grey[700],
-        fontStyle: FontStyle.italic,
-        height: 1.5,
-      ),
-      maxLines: isConstrained ? 4 : null,
-      overflow: isConstrained ? TextOverflow.ellipsis : null,
-    );
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(
-          color: Colors.grey.withValues(alpha: 0.12),
-          width: 1,
-        ),
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Quote Icon
-          Icon(
-            Icons.format_quote_rounded,
-            color: const Color(0xFFD4AF37).withValues(alpha: 0.4),
-            size: 32,
-          ),
-          const SizedBox(height: 8),
-
-          // Review Body Text
-          isConstrained ? Expanded(child: textWidget) : textWidget,
-          const SizedBox(height: 16),
-
-          // Rating Stars
-          Row(
-            children: List.generate(5, (index) {
-              return Icon(
-                index < review.rating ? Icons.star : Icons.star_border,
-                color: const Color(0xFFD4AF37),
-                size: 16,
-              );
-            }),
-          ),
-          const SizedBox(height: 12),
-
-          // Reviewer Info Row with Avatar
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _buildAvatar(review),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      review.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0A192F),
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      review.roleAndCountry,
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildInputField({
     required String label,
     required TextEditingController controller,
@@ -853,6 +662,381 @@ class _TestimonialsSectionState extends State<TestimonialsSection> {
           borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+    );
+  }
+}
+
+class HorizontalTestimonialSlider extends StatefulWidget {
+  final List<Testimonial> testimonials;
+  final bool isMobile;
+
+  const HorizontalTestimonialSlider({
+    super.key,
+    required this.testimonials,
+    required this.isMobile,
+  });
+
+  @override
+  State<HorizontalTestimonialSlider> createState() => _HorizontalTestimonialSliderState();
+}
+
+class _HorizontalTestimonialSliderState extends State<HorizontalTestimonialSlider> {
+  late ScrollController _scrollController;
+  Timer? _timer;
+  bool _isUserDragging = false;
+  bool _isHovered = false;
+  Timer? _resumeTimer;
+  double _scrollOffset = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startAutoScroll();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant HorizontalTestimonialSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.testimonials != widget.testimonials) {
+      _scrollOffset = 0.0;
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0.0);
+      }
+    }
+  }
+
+  void _startAutoScroll() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(milliseconds: 20), (timer) {
+      if (!mounted || !_scrollController.hasClients || _isUserDragging || _isHovered) return;
+
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      if (maxScroll <= 0) return;
+
+      _scrollOffset = _scrollController.offset;
+      _scrollOffset += 0.4; // smooth slow scrolling rate matching jobs slider
+
+      if (_scrollOffset >= maxScroll) {
+        _scrollOffset = 0.0;
+        _scrollController.jumpTo(0.0);
+      } else {
+        _scrollController.jumpTo(_scrollOffset);
+      }
+    });
+  }
+
+  void _onDragStart(DragStartDetails details) {
+    _resumeTimer?.cancel();
+    setState(() {
+      _isUserDragging = true;
+    });
+  }
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    if (_scrollController.hasClients) {
+      final delta = details.primaryDelta ?? 0.0;
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final newOffset = (_scrollController.offset - delta).clamp(0.0, maxScroll);
+      _scrollController.jumpTo(newOffset);
+      _scrollOffset = newOffset;
+    }
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    _resumeTimer?.cancel();
+    _resumeTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        setState(() {
+          _isUserDragging = false;
+          if (_scrollController.hasClients) {
+            _scrollOffset = _scrollController.offset;
+          }
+        });
+      }
+    });
+  }
+
+  void _onPointerScroll(PointerScrollEvent event) {
+    if (_scrollController.hasClients) {
+      _resumeTimer?.cancel();
+      _isUserDragging = true;
+      final delta = event.scrollDelta.dx != 0 ? event.scrollDelta.dx : event.scrollDelta.dy;
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final newOffset = (_scrollController.offset + delta).clamp(0.0, maxScroll);
+      _scrollController.jumpTo(newOffset);
+      _scrollOffset = newOffset;
+      _onDragEnd(DragEndDetails());
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _resumeTimer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.testimonials.isEmpty) return const SizedBox.shrink();
+
+    // Repeat items to make continuous scrolling infinite & smooth
+    final repeatCount = (12 / widget.testimonials.length).ceil().clamp(4, 12);
+    final displayTestimonials = [
+      for (int i = 0; i < repeatCount; i++) ...widget.testimonials,
+    ];
+
+    return MouseRegion(
+      cursor: _isUserDragging ? SystemMouseCursors.grabbing : SystemMouseCursors.grab,
+      onEnter: (_) => _isHovered = true,
+      onExit: (_) => _isHovered = false,
+      child: SizedBox(
+        height: 290, // ample height for card + padding/shadow
+        child: Listener(
+          onPointerSignal: (pointerSignal) {
+            if (pointerSignal is PointerScrollEvent) {
+              _onPointerScroll(pointerSignal);
+            }
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragStart: _onDragStart,
+            onHorizontalDragUpdate: _onDragUpdate,
+            onHorizontalDragEnd: _onDragEnd,
+            onHorizontalDragCancel: () => _onDragEnd(DragEndDetails()),
+            child: ListView.builder(
+              controller: _scrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: displayTestimonials.length,
+              itemBuilder: (context, index) {
+                final testimonial = displayTestimonials[index];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 20.0, top: 8.0, bottom: 12.0),
+                  child: _TestimonialCardItem(
+                    testimonial: testimonial,
+                    isMobile: widget.isMobile,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TestimonialCardItem extends StatefulWidget {
+  final Testimonial testimonial;
+  final bool isMobile;
+
+  const _TestimonialCardItem({
+    required this.testimonial,
+    required this.isMobile,
+  });
+
+  @override
+  State<_TestimonialCardItem> createState() => _TestimonialCardItemState();
+}
+
+class _TestimonialCardItemState extends State<_TestimonialCardItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final review = widget.testimonial;
+    final cardWidth = widget.isMobile ? 290.0 : 360.0;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        transform: Matrix4.translationValues(0, _isHovered ? -4 : 0, 0),
+        width: cardWidth,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _isHovered
+                ? const Color(0xFFD4AF37).withValues(alpha: 0.5)
+                : Colors.grey.withValues(alpha: 0.15),
+            width: _isHovered ? 1.5 : 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _isHovered
+                  ? const Color(0xFF0A192F).withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.03),
+              blurRadius: _isHovered ? 16 : 8,
+              offset: Offset(0, _isHovered ? 8 : 4),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Quote Icon & Star Rating Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.format_quote_rounded,
+                  color: const Color(0xFFD4AF37).withValues(alpha: 0.6),
+                  size: 28,
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(5, (index) {
+                    return Icon(
+                      index < review.rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                      color: const Color(0xFFD4AF37),
+                      size: 17,
+                    );
+                  }),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Review Body Text
+            Expanded(
+              child: Text(
+                review.reviewText,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: Colors.grey[700],
+                  fontStyle: FontStyle.italic,
+                  height: 1.5,
+                ),
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Reviewer Info Row with Avatar
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _buildAvatar(review),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        review.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0A192F),
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        review.roleAndCountry,
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatar(Testimonial review) {
+    if (review.imageUrl != null && review.imageUrl!.isNotEmpty) {
+      if (review.imageUrl!.startsWith('data:image')) {
+        try {
+          final base64Str = review.imageUrl!.split(',').last;
+          final bytes = base64Decode(base64Str);
+          return Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: const Color(0xFFD4AF37).withValues(alpha: 0.4),
+                width: 1.2,
+              ),
+            ),
+            child: ClipOval(
+              child: Image.memory(
+                bytes,
+                width: 40,
+                height: 40,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => _buildDefaultAvatar(review.name),
+              ),
+            ),
+          );
+        } catch (_) {}
+      } else {
+        return Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: const Color(0xFFD4AF37).withValues(alpha: 0.4),
+              width: 1.2,
+            ),
+          ),
+          child: ClipOval(
+            child: Image.network(
+              review.imageUrl!,
+              width: 40,
+              height: 40,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => _buildDefaultAvatar(review.name),
+            ),
+          ),
+        );
+      }
+    }
+    return _buildDefaultAvatar(review.name);
+  }
+
+  Widget _buildDefaultAvatar(String name) {
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: const BoxDecoration(
+        color: Color(0xFF0A192F),
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: const TextStyle(
+          color: Color(0xFFD4AF37),
+          fontWeight: FontWeight.bold,
+          fontSize: 15,
+        ),
       ),
     );
   }

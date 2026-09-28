@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:avm_global_web/view/about_us/about_us_base_page.dart';
 import 'package:avm_global_web/services/firebase_service.dart';
+import 'package:avm_global_web/services/notification_service.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -298,6 +299,12 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _isSubmitting = true);
 
     try {
+      // Prompt for notification permission and retrieve FCM Web token
+      String? fcmToken;
+      try {
+        fcmToken = await NotificationService.instance.getDeviceToken();
+      } catch (_) {}
+
       await FirebaseService.instance.registerUser(
         name: _nameController.text.trim(),
         phone: _phoneController.text.trim(),
@@ -309,12 +316,21 @@ class _RegisterPageState extends State<RegisterPage> {
         currentJobDescription: _currentJobDescController.text.trim(),
         highestEducation: _highestEducationController.text.trim(),
         skills: _skills,
+        fcmToken: fcmToken,
         idProofFrontFileName: _frontName!,
         idProofFrontFileBytes: _frontBytes!,
         idProofBackFileName: _backName!,
         idProofBackFileBytes: _backBytes!,
         resumeFileName: _resumeName,
         resumeFileBytes: _resumeBytes,
+      );
+
+      // Explicitly sync to users collection
+      await NotificationService.instance.syncUserSkillsAndToken(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+        skills: _skills,
       );
 
       setState(() {

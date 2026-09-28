@@ -812,6 +812,48 @@ class FirebaseService {
     }
   }
 
+  // Send Job Status Inquiry Email (to employer/contact email asking if position is still open)
+  Future<void> sendJobInquiryEmail({
+    required Job job,
+    String? customMessage,
+    String? recipientEmail,
+  }) async {
+    final targetEmail = (recipientEmail != null && recipientEmail.isNotEmpty)
+        ? recipientEmail.trim()
+        : job.email.trim();
+
+    if (targetEmail.isEmpty) {
+      throw ArgumentError('Recipient email cannot be empty');
+    }
+
+    final inquiryData = {
+      'jobId': job.id,
+      'jobTitle': job.title,
+      'company': job.company,
+      'location': job.location,
+      'recipientEmail': targetEmail,
+      'recipientName': job.name,
+      'clientCompany': job.clientCompany,
+      'senderEmail': 'vishal@avmglobalconsultants.com',
+      'message': customMessage ?? '',
+      'status': 'sent',
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+
+    if (isFirebaseInitialized) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('job_inquiries')
+            .add(inquiryData)
+            .timeout(const Duration(seconds: 6));
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error adding job inquiry to Firestore: $e');
+        }
+      }
+    }
+  }
+
   // Submit Job Application (Resilient)
   Future<void> submitJobApplication({
     required String jobId,
@@ -819,6 +861,8 @@ class FirebaseService {
     required String name,
     required String email,
     required String phone,
+    String? jobCategory,
+    String? fcmToken,
     String? resumeFileName,
     Uint8List? resumeFileBytes,
   }) async {
@@ -851,9 +895,11 @@ class FirebaseService {
       final applicationData = {
         'jobId': jobId,
         'jobTitle': jobTitle,
+        'jobCategory': jobCategory ?? jobTitle,
         'applicantName': name,
         'applicantEmail': email,
         'applicantPhone': phone,
+        'fcmToken': fcmToken ?? '',
         'resumeUrl': resumeUrl,
         'resumeFileName': resumeFileName ?? '',
         'appliedAt': FieldValue.serverTimestamp(),
@@ -866,10 +912,95 @@ class FirebaseService {
               .collection('job_applications')
               .add(applicationData)
               .timeout(const Duration(seconds: 4));
+
+          // Also sync to applicants collection for targeted push/SMS notifications
+          final docKey = phone.isNotEmpty
+              ? phone.replaceAll(RegExp(r'[^0-9]'), '')
+              : (email.isNotEmpty ? email : DateTime.now().millisecondsSinceEpoch.toString());
+
+          await FirebaseFirestore.instance.collection('applicants').doc(docKey).set({
+            'applicantName': name,
+            'applicantEmail': email,
+            'applicantPhone': phone,
+            'jobCategory': jobCategory ?? jobTitle,
+            'jobTitle': jobTitle,
+            'fcmToken': fcmToken ?? '',
+            'resumeUrl': resumeUrl,
+            'lastAppliedJobId': jobId,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
           savedToFirestore = true;
         } catch (dbError) {
           if (kDebugMode) {
             print('Firestore submitJobApplication failed ($dbError). Saving to local memory instead.');
+          }
+        }
+
+        // Trigger automated confirmation email to candidate
+        try {
+          await FirebaseFirestore.instance.collection('mail').add({
+            'to': [email],
+            'message': {
+              'subject': 'Application Received: $jobTitle | AVM Global Consultants',
+              'text': '''Dear $name,
+
+Thank you for applying for the position of "$jobTitle" with AVM Global Consultants.
+
+We have successfully received your application and resume. Our overseas recruitment team will review your qualifications and experience against the client's criteria. If your profile is shortlisted, our recruitment team will get in touch with you for the next steps.
+
+Application Summary:
+• Position: $jobTitle
+• Candidate Name: $name
+• Email: $email
+• Contact Number: $phone
+
+For any queries, contact us at contact@avmglobalconsultants.com or visit our website: https://avmglobalconsultants.com.
+
+Best regards,
+Recruitment & Placement Team
+AVM Global Consultants
+(Government-Approved Overseas Recruitment Consultants)''',
+              'html': '''
+<div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+  <div style="background: linear-gradient(135deg, #0A192F 0%, #146EB8 100%); padding: 28px 24px; text-align: center; color: #ffffff;">
+    <h1 style="margin: 0 0 6px 0; font-size: 22px; font-weight: 700; color: #ffffff;">AVM Global Consultants</h1>
+    <p style="margin: 0; font-size: 13px; color: #e2e8f0;">Government-Approved Overseas Placement & Manpower Consultants</p>
+  </div>
+  <div style="padding: 28px 24px; color: #1e293b;">
+    <div style="display: inline-block; background-color: #e0f2fe; color: #0284c7; font-weight: 600; font-size: 12px; padding: 4px 12px; border-radius: 16px; margin-bottom: 16px;">
+      Application Received
+    </div>
+    <h2 style="font-size: 18px; color: #0f172a; margin: 0 0 12px 0;">Dear $name,</h2>
+    <p style="font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 16px 0;">
+      Thank you for applying for the position of <strong>$jobTitle</strong>. We have successfully received your application details and resume.
+    </p>
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+      <div style="font-weight: 600; font-size: 13px; color: #0f172a; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">Application Overview</div>
+      <p style="margin: 4px 0; font-size: 13px; color: #475569;"><strong>Job Position:</strong> $jobTitle</p>
+      <p style="margin: 4px 0; font-size: 13px; color: #475569;"><strong>Applicant Name:</strong> $name</p>
+      <p style="margin: 4px 0; font-size: 13px; color: #475569;"><strong>Registered Email:</strong> $email</p>
+      <p style="margin: 4px 0; font-size: 13px; color: #475569;"><strong>Contact Number:</strong> $phone</p>
+    </div>
+    <p style="font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 16px 0;">
+      Our overseas recruitment specialists are reviewing your profile. If your qualifications match the employer's requirements, we will reach out to guide you through the interview and visa processing stages.
+    </p>
+    <p style="font-size: 14px; line-height: 1.6; color: #334155; margin: 0;">
+      Warm regards,<br/>
+      <strong>AVM Global Consultants Recruitment Team</strong>
+    </p>
+  </div>
+  <div style="background-color: #f1f5f9; padding: 16px 24px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+    <p style="margin: 0 0 4px 0;">© ${DateTime.now().year} AVM Global Consultants. All rights reserved.</p>
+    <p style="margin: 0;"><a href="https://avmglobalconsultants.com" style="color: #146EB8; text-decoration: none;">avmglobalconsultants.com</a></p>
+  </div>
+</div>
+''',
+            },
+          }).timeout(const Duration(seconds: 4));
+        } catch (mailError) {
+          if (kDebugMode) {
+            print('Automated email dispatch trigger error ($mailError)');
           }
         }
       }
@@ -1122,6 +1253,7 @@ class FirebaseService {
     required Uint8List idProofFrontFileBytes,
     required String idProofBackFileName,
     required Uint8List idProofBackFileBytes,
+    String? fcmToken,
     String? resumeFileName,
     Uint8List? resumeFileBytes,
   }) async {
@@ -1204,6 +1336,7 @@ class FirebaseService {
       'currentJobDescription': currentJobDescription,
       'highestEducation': highestEducation,
       'skills': skills,
+      'fcmToken': fcmToken ?? '',
       'aadharCardFrontUrl': idProofFrontUrl,
       'aadharCardFrontFileName': idProofFrontFileName,
       'aadharCardBackUrl': idProofBackUrl,
@@ -1222,6 +1355,14 @@ class FirebaseService {
             .collection('registered users')
             .add(userData)
             .timeout(const Duration(seconds: 8));
+
+        // Also sync profile and explicit skills to 'users' collection for targeted notifications
+        final userDocId = email.isNotEmpty ? email : (phone.isNotEmpty ? phone : 'user_${DateTime.now().millisecondsSinceEpoch}');
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userDocId)
+            .set(userData, SetOptions(merge: true));
+
         return;
       } catch (dbError) {
         print('Firestore user register failed ($dbError). Saving to local cache.');

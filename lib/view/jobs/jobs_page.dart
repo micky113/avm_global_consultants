@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:avm_global_web/models/job.dart';
 import 'package:avm_global_web/services/firebase_service.dart';
+import 'package:avm_global_web/services/notification_service.dart';
+import 'package:avm_global_web/widgets/job_alert_banner.dart';
 import 'package:avm_global_web/view/admin/admin_dashboard.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'dart:js' as js;
@@ -36,6 +39,9 @@ class _JobsPageState extends State<JobsPage> {
   String _markedSuccessQuery = '';
   String _locationQuery = '';
   bool _showingFallbackResults = false;
+
+  Timer? _searchDebounceTimer;
+  OverlayEntry? _alertBannerEntry;
 
   final List<String> _jobTypes = ['All', 'Full-time', 'Part-time', 'Contract', 'Remote', 'Hybrid'];
 
@@ -313,10 +319,42 @@ class _JobsPageState extends State<JobsPage> {
         })
       ]);
     }
+
+    // Trigger alert banner if arrived with a specific search query
+    if (_searchQuery.trim().length >= 2) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 700), () {
+          if (mounted && _searchQuery.trim().isNotEmpty) {
+            _triggerJobAlertBanner(_searchQuery.trim());
+          }
+        });
+      });
+    }
+  }
+
+  void _onSearchInputChanged(String val) {
+    setState(() {
+      _searchQuery = val;
+      _locationQuery = '';
+    });
+  }
+
+  void _triggerJobAlertBanner(String query) {
+    if (!mounted || query.trim().isEmpty) return;
+    _alertBannerEntry?.remove();
+    _alertBannerEntry = JobAlertBanner.show(
+      context,
+      searchKeyword: query.trim(),
+      onSubscribed: () {
+        _alertBannerEntry = null;
+      },
+    );
   }
 
   @override
   void dispose() {
+    _searchDebounceTimer?.cancel();
+    _alertBannerEntry?.remove();
     _pageScrollController.dispose();
     _searchController.dispose();
     _pageFocusNode.dispose();
@@ -690,11 +728,13 @@ class _JobsPageState extends State<JobsPage> {
                     return TextField(
                       controller: _searchController,
                       textInputAction: TextInputAction.search,
-                      onChanged: (val) {
-                        setState(() {
-                          _searchQuery = val;
-                          _locationQuery = '';
-                        });
+                      onChanged: _onSearchInputChanged,
+                      onSubmitted: (val) {
+                        final q = val.trim();
+                        if (q.isNotEmpty) {
+                          _triggerJobAlertBanner(q);
+                          FirebaseService.instance.markSearchSuccessful(q);
+                        }
                       },
                       decoration: InputDecoration(
                         hintText: 'Search title, company, location...',
@@ -718,6 +758,39 @@ class _JobsPageState extends State<JobsPage> {
                       ),
                     );
                   },
+                ),
+              ),
+
+              // Search Jobs Button
+              ElevatedButton.icon(
+                onPressed: () {
+                  final q = _searchController.text.trim();
+                  if (q.isNotEmpty) {
+                    setState(() {
+                      _searchQuery = q;
+                      _locationQuery = '';
+                    });
+                    _triggerJobAlertBanner(q);
+                    FirebaseService.instance.markSearchSuccessful(q);
+                  }
+                },
+                icon: const Icon(Icons.search_rounded, size: 18, color: Colors.white),
+                label: Text(
+                  'Search Jobs',
+                  style: GoogleFonts.notoSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: themeColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
                 ),
               ),
               
@@ -1278,41 +1351,56 @@ class _JobsPageState extends State<JobsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Name
-                        Text(
-                          'Full Name',
-                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87),
+                            children: const [
+                              TextSpan(text: 'Full Name '),
+                              TextSpan(text: '*', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: nameCtrl,
                           decoration: InputDecoration(
-                            hintText: 'Enter your name',
+                            hintText: 'Enter your full name',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           ),
-                          validator: (val) => val == null || val.trim().isEmpty ? 'Please enter your name' : null,
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Please enter your full name';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
 
                         // Email
-                        Text(
-                          'Email Address',
-                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87),
+                            children: const [
+                              TextSpan(text: 'Email Address '),
+                              TextSpan(text: '*', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: emailCtrl,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
-                            hintText: 'Enter your email id',
+                            hintText: 'Enter your email id (e.g. name@example.com)',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           ),
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) {
-                              return 'Please enter your email';
+                              return 'Email address is required';
                             }
-                            final emailReg = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                            final emailReg = RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$');
                             if (!emailReg.hasMatch(val.trim())) {
                               return 'Please enter a valid email address';
                             }
@@ -1322,27 +1410,46 @@ class _JobsPageState extends State<JobsPage> {
                         const SizedBox(height: 16),
 
                         // Contact Number
-                        Text(
-                          'Contact Number',
-                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87),
+                            children: const [
+                              TextSpan(text: 'Contact Number '),
+                              TextSpan(text: '*', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: phoneCtrl,
                           keyboardType: TextInputType.phone,
                           decoration: InputDecoration(
-                            hintText: 'Enter your phone number',
+                            hintText: 'Enter your contact number with country code',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           ),
-                          validator: (val) => val == null || val.trim().isEmpty ? 'Please enter your phone number' : null,
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Contact number is required';
+                            }
+                            final phoneDigits = val.replaceAll(RegExp(r'[^0-9]'), '');
+                            if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+                              return 'Please enter a valid contact number (7-15 digits)';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
 
                         // Resume Upload
-                        Text(
-                          'Upload Resume (PDF, DOC)',
-                          style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13),
+                        RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.notoSans(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87),
+                            children: const [
+                              TextSpan(text: 'Upload Resume (PDF, DOC) '),
+                              TextSpan(text: '*', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 8),
                         if (resumeName == null) ...[
@@ -1420,19 +1527,34 @@ class _JobsPageState extends State<JobsPage> {
                           setDialogState(() => isSubmitting = true);
 
                           try {
+                            String? fcmToken;
+                            try {
+                              fcmToken = await NotificationService.instance.getDeviceToken();
+                            } catch (_) {}
+
                             await FirebaseService.instance.submitJobApplication(
                               jobId: job.id,
                               jobTitle: job.title,
+                              jobCategory: job.type.isNotEmpty ? job.type : job.title,
                               name: nameCtrl.text.trim(),
                               email: emailCtrl.text.trim(),
                               phone: phoneCtrl.text.trim(),
+                              fcmToken: fcmToken,
                               resumeFileName: resumeName,
                               resumeFileBytes: resumeBytes,
                             );
 
+                            await NotificationService.instance.registerApplicantNotification(
+                              phone: phoneCtrl.text.trim(),
+                              jobCategory: job.type.isNotEmpty ? job.type : job.title,
+                              jobTitle: job.title,
+                              name: nameCtrl.text.trim(),
+                              email: emailCtrl.text.trim(),
+                            );
+
                             if (context.mounted) {
                               Navigator.pop(context);
-                              _showSuccessDialog(job.title, job.company);
+                              _showSuccessDialog(job.title, job.company, emailCtrl.text.trim());
                             }
                           } catch (e) {
                             setDialogState(() => isSubmitting = false);
@@ -1467,7 +1589,7 @@ class _JobsPageState extends State<JobsPage> {
     );
   }
 
-  void _showSuccessDialog(String jobTitle, String company) {
+  void _showSuccessDialog(String jobTitle, String company, String applicantEmail) {
     showDialog(
       context: context,
       builder: (context) {
@@ -1500,7 +1622,7 @@ class _JobsPageState extends State<JobsPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'You have successfully applied for the position of $jobTitle at $company. Our recruitment team will review your profile and get back to you shortly.',
+                'You have successfully applied for the position of $jobTitle at $company.\n\nA confirmation email has been sent to $applicantEmail. Our recruitment team will review your profile and get back to you shortly.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.notoSans(
                   fontSize: 14,

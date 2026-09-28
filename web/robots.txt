@@ -1,0 +1,9 @@
+﻿# AVM Global Consultants - robots.txt
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /employer_dashboard
+
+# Sitemaps
+Sitemap: https://avmglobal-consultants-113.web.app/sitemap.xml
+Sitemap: https://avmglobalconsultants.com/sitemap.xml

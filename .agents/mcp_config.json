@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "dart-flutter": {
+      "command": "dart",
+      "args": ["run", "flutter_tools", "mcp"],
+      "env": {
+        "DART_SDK": ""
+      }
+    }
+  }
+}
