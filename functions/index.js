@@ -1,3 +1,7 @@
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.GOOGLE_APPLICATION_CREDENTIALS.endsWith('.json')) {
+  delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+}
+
 const { onRequest } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
@@ -228,42 +232,45 @@ exports.onJobUploaded = onDocumentCreated("jobs/{jobId}", async (event) => {
     }
   }
 
-  const baseNotification = {
-    title: `New Opening: ${title}`,
-    body: `${company} is hiring for ${title} (${location}). Apply now via AVM Global!`,
-  };
+  const jobTag = `job_${jobId}`;
+  const dispatchedTopics = new Set();
 
   for (const keyword of topicKeywords) {
     const topicName = `job_search_${keyword}`;
+    if (dispatchedTopics.has(topicName)) continue;
+    dispatchedTopics.add(topicName);
+
     const topicJobUrl = `${baseUrl}/jobs?query=${encodeURIComponent(keyword === 'all' ? title : keyword)}&id=${encodeURIComponent(jobId)}`;
 
     try {
       await admin.messaging().send({
         topic: topicName,
-        notification: baseNotification,
+        notification: {
+          title: `New Opening: ${title}`,
+          body: `${company} is hiring for ${title} (${location}). Apply now via AVM Global!`,
+        },
         data: {
-          jobId: jobId,
-          jobTitle: title,
-          company: company,
-          location: location,
-          url: topicJobUrl,
-          click_action: topicJobUrl,
+          title: `New Opening: ${title}`,
+          body: `${company} is hiring for ${title} (${location}). Apply now via AVM Global!`,
+          jobId: String(jobId),
+          jobTitle: String(title),
+          company: String(company),
+          location: String(location),
+          url: String(topicJobUrl),
+          click_action: String(topicJobUrl),
+          tag: String(jobTag),
         },
         webpush: {
           headers: {
             Urgency: "high",
+            Topic: jobTag,
           },
           notification: {
-            title: baseNotification.title,
-            body: baseNotification.body,
-            icon: `${baseUrl}/icons/Icon-192.png`,
-            badge: `${baseUrl}/icons/Icon-192.png`,
-            data: {
-              url: topicJobUrl,
-              jobId: jobId,
-              jobTitle: title,
-            },
-            click_action: topicJobUrl,
+            title: `New Opening: ${title}`,
+            body: `${company} is hiring for ${title} (${location}). Apply now via AVM Global!`,
+            icon: "https://avmglobalconsultants.com/icons/Icon-192.png",
+            tag: jobTag,
+            renotify: false,
           },
           fcmOptions: {
             link: topicJobUrl,
@@ -282,9 +289,10 @@ exports.onJobUploaded = onDocumentCreated("jobs/{jobId}", async (event) => {
     ...type.toLowerCase().split(/[\s,/-]+/).filter((t) => t.length > 2),
   ]);
 
+  const globalTargetedTokens = new Set();
+
   try {
     const usersSnapshot = await admin.firestore().collection("users").get();
-    const targetedUserTokens = new Set();
 
     for (const doc of usersSnapshot.docs) {
       const user = doc.data();
@@ -300,36 +308,32 @@ exports.onJobUploaded = onDocumentCreated("jobs/{jobId}", async (event) => {
       );
 
       if (isMatch) {
-        if (userToken && userToken.length > 20 && !targetedUserTokens.has(userToken)) {
-          targetedUserTokens.add(userToken);
-          const userNotifTitle = `Matched Job Alert: ${title}`;
-          const userNotifBody = `Hello ${user.name || "Candidate"}, an overseas opening matching your skills is open now!`;
+        if (userToken && userToken.length > 20 && !globalTargetedTokens.has(userToken)) {
+          globalTargetedTokens.add(userToken);
           try {
             await admin.messaging().send({
               token: userToken,
               notification: {
-                title: userNotifTitle,
-                body: userNotifBody,
+                title: `Matched Job Alert: ${title}`,
+                body: `Hello ${user.name || "Candidate"}, an overseas opening matching your skills is open now!`,
               },
               data: {
-                jobId: jobId,
-                jobTitle: title,
-                url: defaultJobUrl,
-                click_action: defaultJobUrl,
+                title: `Matched Job Alert: ${title}`,
+                body: `Hello ${user.name || "Candidate"}, an overseas opening matching your skills is open now!`,
+                jobId: String(jobId),
+                jobTitle: String(title),
+                url: String(defaultJobUrl),
+                click_action: String(defaultJobUrl),
+                tag: String(jobTag),
               },
               webpush: {
-                headers: { Urgency: "high" },
+                headers: { Urgency: "high", Topic: jobTag },
                 notification: {
-                  title: userNotifTitle,
-                  body: userNotifBody,
-                  icon: `${baseUrl}/icons/Icon-192.png`,
-                  badge: `${baseUrl}/icons/Icon-192.png`,
-                  data: {
-                    url: defaultJobUrl,
-                    jobId: jobId,
-                    jobTitle: title,
-                  },
-                  click_action: defaultJobUrl,
+                  title: `Matched Job Alert: ${title}`,
+                  body: `Hello ${user.name || "Candidate"}, an overseas opening matching your skills is open now!`,
+                  icon: "https://avmglobalconsultants.com/icons/Icon-192.png",
+                  tag: jobTag,
+                  renotify: false,
                 },
                 fcmOptions: {
                   link: defaultJobUrl,
@@ -369,35 +373,32 @@ exports.onJobUploaded = onDocumentCreated("jobs/{jobId}", async (event) => {
           Array.from(jobTokens).some((token) => category.includes(token)));
 
       if (isCategoryMatch) {
-        if (applicantToken && applicantToken.length > 20) {
-          const appNotifTitle = `New Position in your Field: ${title}`;
-          const appNotifBody = `A new ${title} position matching your profile is now open at ${company}.`;
+        if (applicantToken && applicantToken.length > 20 && !globalTargetedTokens.has(applicantToken)) {
+          globalTargetedTokens.add(applicantToken);
           try {
             await admin.messaging().send({
               token: applicantToken,
               notification: {
-                title: appNotifTitle,
-                body: appNotifBody,
+                title: `New Position in your Field: ${title}`,
+                body: `A new ${title} position matching your profile is now open at ${company}.`,
               },
               data: {
-                jobId: jobId,
-                jobTitle: title,
-                url: defaultJobUrl,
-                click_action: defaultJobUrl,
+                title: `New Position in your Field: ${title}`,
+                body: `A new ${title} position matching your profile is now open at ${company}.`,
+                jobId: String(jobId),
+                jobTitle: String(title),
+                url: String(defaultJobUrl),
+                click_action: String(defaultJobUrl),
+                tag: String(jobTag),
               },
               webpush: {
-                headers: { Urgency: "high" },
+                headers: { Urgency: "high", Topic: jobTag },
                 notification: {
-                  title: appNotifTitle,
-                  body: appNotifBody,
-                  icon: `${baseUrl}/icons/Icon-192.png`,
-                  badge: `${baseUrl}/icons/Icon-192.png`,
-                  data: {
-                    url: defaultJobUrl,
-                    jobId: jobId,
-                    jobTitle: title,
-                  },
-                  click_action: defaultJobUrl,
+                  title: `New Position in your Field: ${title}`,
+                  body: `A new ${title} position matching your profile is now open at ${company}.`,
+                  icon: "https://avmglobalconsultants.com/icons/Icon-192.png",
+                  tag: jobTag,
+                  renotify: false,
                 },
                 fcmOptions: {
                   link: defaultJobUrl,
@@ -421,9 +422,9 @@ exports.onJobUploaded = onDocumentCreated("jobs/{jobId}", async (event) => {
   }
 
   // --- Step D: Target Search Subscriptions (Anonymous Visitors who Allowed Alerts) ---
+  // Note: Only dispatch direct unicast token message if the subscription query was NOT covered by topic broadcast
   try {
     const searchSubsSnapshot = await admin.firestore().collection("search_subscriptions").get();
-    const targetedSearchTokens = new Set();
 
     for (const doc of searchSubsSnapshot.docs) {
       const sub = doc.data();
@@ -431,47 +432,49 @@ exports.onJobUploaded = onDocumentCreated("jobs/{jobId}", async (event) => {
       const topic = sub.topic || "";
       const token = sub.fcmToken;
 
-      const isTopicMatch =
-        (rawQuery.length >= 2 &&
-          (title.toLowerCase().includes(rawQuery) ||
-            rawQuery.includes(title.toLowerCase()) ||
-            Array.from(jobTokens).some((t) => rawQuery.includes(t) || t.includes(rawQuery)))) ||
-        topicKeywords.has(sanitizeTopic(rawQuery)) ||
-        topicKeywords.has(topic.replace(/^job_search_/, ""));
+      const cleanTopicKey = topic.replace(/^job_search_/, "");
+      const isAlreadyCoveredByTopic = dispatchedTopics.has(topic) || topicKeywords.has(cleanTopicKey) || cleanTopicKey === "all";
 
-      if (isTopicMatch && token && token.length > 20 && !targetedSearchTokens.has(token)) {
-        targetedSearchTokens.add(token);
+      // If already broadcasted to that topic, skip individual unicast to avoid double notifications
+      if (isAlreadyCoveredByTopic) {
+        continue;
+      }
+
+      const isCustomQueryMatch =
+        rawQuery.length >= 2 &&
+        (title.toLowerCase().includes(rawQuery) ||
+          rawQuery.includes(title.toLowerCase()) ||
+          Array.from(jobTokens).some((t) => rawQuery.includes(t) || t.includes(rawQuery)));
+
+      if (isCustomQueryMatch && token && token.length > 20 && !globalTargetedTokens.has(token)) {
+        globalTargetedTokens.add(token);
         const subQuery = sub.rawQuery || title;
         const subJobUrl = `${baseUrl}/jobs?query=${encodeURIComponent(subQuery)}&id=${encodeURIComponent(jobId)}`;
-        const searchNotifTitle = `Job Alert: ${title}`;
-        const searchNotifBody = `New opening matching your search for "${subQuery}" at ${company} (${location})!`;
 
         try {
           await admin.messaging().send({
             token: token,
             notification: {
-              title: searchNotifTitle,
-              body: searchNotifBody,
+              title: `Job Alert: ${title}`,
+              body: `New opening matching your search for "${subQuery}" at ${company} (${location})!`,
             },
             data: {
-              jobId: jobId,
-              jobTitle: title,
-              url: subJobUrl,
-              click_action: subJobUrl,
+              title: `Job Alert: ${title}`,
+              body: `New opening matching your search for "${subQuery}" at ${company} (${location})!`,
+              jobId: String(jobId),
+              jobTitle: String(title),
+              url: String(subJobUrl),
+              click_action: String(subJobUrl),
+              tag: String(jobTag),
             },
             webpush: {
-              headers: { Urgency: "high" },
+              headers: { Urgency: "high", Topic: jobTag },
               notification: {
-                title: searchNotifTitle,
-                body: searchNotifBody,
-                icon: `${baseUrl}/icons/Icon-192.png`,
-                badge: `${baseUrl}/icons/Icon-192.png`,
-                data: {
-                  url: subJobUrl,
-                  jobId: jobId,
-                  jobTitle: title,
-                },
-                click_action: subJobUrl,
+                title: `Job Alert: ${title}`,
+                body: `New opening matching your search for "${subQuery}" at ${company} (${location})!`,
+                icon: "https://avmglobalconsultants.com/icons/Icon-192.png",
+                tag: jobTag,
+                renotify: false,
               },
               fcmOptions: {
                 link: subJobUrl,
@@ -671,4 +674,73 @@ exports.sendJobInquiryEmail = onRequest({ cors: true }, async (req, res) => {
     }
   });
 });
+
+// 7. Test Push Notification Endpoint for Isolated Verification
+exports.sendTestPushNotification = onRequest({ cors: true }, async (req, res) => {
+  cors(req, res, async () => {
+    try {
+      let { token, title, body, url, delaySeconds } = req.body || {};
+
+      if (!token) {
+        const subSnap = await admin.firestore().collection("search_subscriptions").orderBy("subscribedAt", "desc").limit(1).get();
+        if (!subSnap.empty) {
+          token = subSnap.docs[0].data().fcmToken;
+        }
+      }
+
+      if (!token) {
+        return res.status(400).json({ error: "No active FCM token found to send test notification." });
+      }
+
+      if (delaySeconds && Number(delaySeconds) > 0) {
+        await new Promise((resolve) => setTimeout(resolve, Number(delaySeconds) * 1000));
+      }
+
+      const notifTitle = title || "Test Alert | AVM Global Consultants";
+      const notifBody = body || "Test push notification successful! Tap here to view open job positions.";
+      const targetUrl = url || "https://avmglobalconsultants.com/jobs";
+
+      const testTag = `test_${Date.now()}`;
+      const messagePayload = {
+        token: token,
+        notification: {
+          title: notifTitle,
+          body: notifBody,
+        },
+        data: {
+          title: notifTitle,
+          body: notifBody,
+          url: targetUrl,
+          click_action: targetUrl,
+          tag: testTag,
+        },
+        webpush: {
+          headers: { Urgency: "high", Topic: testTag },
+          notification: {
+            title: notifTitle,
+            body: notifBody,
+            icon: "https://avmglobalconsultants.com/icons/Icon-192.png",
+            tag: testTag,
+            renotify: false,
+          },
+          fcmOptions: {
+            link: targetUrl,
+          },
+        },
+      };
+
+      const response = await admin.messaging().send(messagePayload);
+      console.log("[Test Push] Dispatched successfully:", response);
+      return res.status(200).json({
+        success: true,
+        messageId: response,
+        tokenTarget: token.substring(0, 15) + "...",
+      });
+    } catch (err) {
+      console.error("[Test Push Error]:", err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+});
+
 

@@ -11,6 +11,7 @@ import 'package:avm_global_web/view/about_us/locations_page.dart';
 import 'package:avm_global_web/view/about_us/contact_us_page.dart';
 import 'package:avm_global_web/view/register/register_page.dart';
 import 'package:avm_global_web/view/admin/employer_dashboard.dart';
+import 'package:avm_global_web/view/admin/test_notification_page.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 class MyAppRouter {
@@ -101,6 +102,13 @@ class MyAppRouter {
         path: '/employer',
         pageBuilder: (context, state) => const MaterialPage(
           child: EmployerPage(),
+        ),
+      ),
+      GoRoute(
+        name: 'test-alerts',
+        path: '/test-alerts',
+        pageBuilder: (context, state) => const MaterialPage(
+          child: TestNotificationPage(),
         ),
       ),
         // GoRoute(

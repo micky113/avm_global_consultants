@@ -72,7 +72,22 @@ class NotificationService {
   }
 
   /// Request Notification Permissions from user's web browser
-  Future<NotificationSettings> requestPermission() async {
+  Future<NotificationSettings?> requestPermission() async {
+    if (kIsWeb) {
+      try {
+        if (js.context.hasProperty('Notification')) {
+          js.context.callMethod('eval', [
+            "if (typeof Notification !== 'undefined') { Notification.requestPermission(); }"
+          ]);
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Web requestPermission warning: $e');
+        }
+      }
+      return null;
+    }
+
     try {
       final settings = await _fcm.requestPermission(
         alert: true,
@@ -91,7 +106,7 @@ class NotificationService {
       if (kDebugMode) {
         print('Error requesting notification permission: $e');
       }
-      rethrow;
+      return null;
     }
   }
 
@@ -115,7 +130,7 @@ class NotificationService {
       if (!completer.isCompleted) completer.complete(null);
     }
     return completer.future.timeout(
-      const Duration(seconds: 4),
+      const Duration(seconds: 10),
       onTimeout: () => null,
     );
   }
