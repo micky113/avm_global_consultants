@@ -205,54 +205,255 @@ class _EmployerDashboardDialogState extends State<EmployerDashboardDialog> {
   Widget _buildJobsPanel() {
     final isMobilePanel = MediaQuery.of(context).size.width < 600;
 
-    return Column(
-      children: [
-        // Panel Header
-        Padding(
-          padding: EdgeInsets.all(isMobilePanel ? 12 : 24),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Job Openings',
-                style: GoogleFonts.notoSans(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _addEditJobDialog(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: widget.themeColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  elevation: 0,
-                ),
-                icon: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
-                label: Text(
-                  'Add New Job',
-                  style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-        ),
+    return StreamBuilder<List<Job>>(
+      stream: FirebaseService.instance.getJobsStream(employerId: widget.employerId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error loading jobs: ${snapshot.error}'));
+        }
+        final jobs = snapshot.data ?? [];
+        final openJobsCount = jobs.where((j) => j.status.trim().toLowerCase() != 'closed').length;
+        final closedJobsCount = jobs.length - openJobsCount;
 
-        // List of jobs
-        Expanded(
-          child: StreamBuilder<List<Job>>(
-            stream: FirebaseService.instance.getJobsStream(employerId: widget.employerId),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return Center(child: Text('Error loading jobs: ${snapshot.error}'));
-              }
-              final jobs = snapshot.data ?? [];
-              if (jobs.isEmpty) {
-                return Center(
+        return Column(
+          children: [
+            // Panel Header with Total, Open, and Closed Counts
+            Padding(
+              padding: EdgeInsets.all(isMobilePanel ? 12 : 24),
+              child: isMobilePanel
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Job Openings',
+                              style: GoogleFonts.notoSans(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: () => _addEditJobDialog(),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: widget.themeColor,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                elevation: 0,
+                              ),
+                              icon: const Icon(Icons.add_rounded, color: Colors.white, size: 16),
+                              label: Text(
+                                'Add Job',
+                                style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                              decoration: BoxDecoration(
+                                color: widget.themeColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'Total: ${jobs.length}',
+                                style: GoogleFonts.notoSans(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: widget.themeColor,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3), width: 1),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6.5,
+                                    height: 6.5,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF10B981),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4.5),
+                                  Text(
+                                    'Open: $openJobsCount',
+                                    style: GoogleFonts.notoSans(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF059669),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3), width: 1),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6.5,
+                                    height: 6.5,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFEF4444),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4.5),
+                                  Text(
+                                    'Closed: $closedJobsCount',
+                                    style: GoogleFonts.notoSans(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFFDC2626),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Job Openings',
+                              style: GoogleFonts.notoSans(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: widget.themeColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'Total: ${jobs.length}',
+                                style: GoogleFonts.notoSans(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: widget.themeColor,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3), width: 1),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF10B981),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'Open: $openJobsCount',
+                                    style: GoogleFonts.notoSans(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF059669),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3), width: 1),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFEF4444),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'Closed: $closedJobsCount',
+                                    style: GoogleFonts.notoSans(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFFDC2626),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () => _addEditJobDialog(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: widget.themeColor,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            elevation: 0,
+                          ),
+                          icon: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                          label: Text(
+                            'Add New Job',
+                            style: GoogleFonts.notoSans(fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+
+            // List of jobs
+            if (jobs.isEmpty)
+              Expanded(
+                child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -264,10 +465,11 @@ class _EmployerDashboardDialogState extends State<EmployerDashboardDialog> {
                       ),
                     ],
                   ),
-                );
-              }
-
-              return ListView.builder(
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.symmetric(horizontal: isMobilePanel ? 12 : 24),
                 itemCount: jobs.length,
@@ -515,11 +717,11 @@ class _EmployerDashboardDialogState extends State<EmployerDashboardDialog> {
                     ),
                   );
                 },
-              );
-            },
-          ),
-        ),
-      ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

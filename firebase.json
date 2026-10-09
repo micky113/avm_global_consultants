@@ -12,6 +12,7 @@
     }
   ],
   "hosting": {
+    "site": "avmglobal-consultants-113",
     "public": "build/web",
     "ignore": [
       "firebase.json",
