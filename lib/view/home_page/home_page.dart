@@ -305,7 +305,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         const SizedBox(height: 20),
         StreamBuilder<List<Job>>(
-          stream: FirebaseService.instance.getJobsStream(),
+          stream: FirebaseService.instance.getJobsStream(openOnly: true),
           builder: (context, jobsSnapshot) {
             if (jobsSnapshot.hasData && jobsSnapshot.data!.isNotEmpty) {
               final sortedJobs = List<Job>.from(jobsSnapshot.data!)
@@ -1136,8 +1136,8 @@ class _MyHomePageState extends State<MyHomePage> {
     _mobileSkillsFocusNode = FocusNode();
     _mobileLocationFocusNode = FocusNode();
 
-    // Dynamically populate suggestion hints from live Firestore jobs
-    _jobsSubscription = FirebaseService.instance.getJobsStream().listen((jobs) {
+    // Dynamically populate suggestion hints from live Firestore jobs (Open jobs only)
+    _jobsSubscription = FirebaseService.instance.getJobsStream(openOnly: true).listen((jobs) {
       if (!mounted) return;
       final Set<String> newSkills = {..._skillsSuggestions};
       final Set<String> newLocations = {..._locationSuggestions};

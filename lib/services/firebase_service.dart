@@ -643,7 +643,7 @@ class FirebaseService {
   }
 
   // Get Jobs Stream (Realtime Resilient)
-  Stream<List<Job>> getJobsStream({String? employerId}) async* {
+  Stream<List<Job>> getJobsStream({String? employerId, bool openOnly = false}) async* {
     if (isFirebaseInitialized) {
       bool hasEmitted = false;
       try {
@@ -652,11 +652,14 @@ class FirebaseService {
             .orderBy('postedAt', descending: true)
             .snapshots()
             .map((snapshot) {
-          final list = snapshot.docs
+          var list = snapshot.docs
               .map((doc) => Job.fromMap(doc.id, doc.data()))
               .toList();
           if (employerId != null && employerId.isNotEmpty) {
-            return list.where((job) => job.employerId == employerId).toList();
+            list = list.where((job) => job.employerId == employerId).toList();
+          }
+          if (openOnly) {
+            list = list.where((job) => job.status.trim().toLowerCase() != 'closed').toList();
           }
           return list;
         });
@@ -675,25 +678,45 @@ class FirebaseService {
           print('Firestore getJobsStream failed or timed out ($e). Streaming local mock jobs.');
         }
         if (!hasEmitted) {
-          final localList = List<Job>.from(_localJobs);
+          var localList = List<Job>.from(_localJobs);
           if (employerId != null && employerId.isNotEmpty) {
-            yield localList.where((j) => j.employerId == employerId).toList();
-            yield* _jobsController.stream.map((list) => list.where((j) => j.employerId == employerId).toList());
-          } else {
-            yield localList;
-            yield* _jobsController.stream;
+            localList = localList.where((j) => j.employerId == employerId).toList();
           }
+          if (openOnly) {
+            localList = localList.where((j) => j.status.trim().toLowerCase() != 'closed').toList();
+          }
+          yield localList;
+          yield* _jobsController.stream.map((list) {
+            var filtered = list;
+            if (employerId != null && employerId.isNotEmpty) {
+              filtered = filtered.where((j) => j.employerId == employerId).toList();
+            }
+            if (openOnly) {
+              filtered = filtered.where((j) => j.status.trim().toLowerCase() != 'closed').toList();
+            }
+            return filtered;
+          });
         }
       }
     } else {
-      final localList = List<Job>.from(_localJobs);
+      var localList = List<Job>.from(_localJobs);
       if (employerId != null && employerId.isNotEmpty) {
-        yield localList.where((j) => j.employerId == employerId).toList();
-        yield* _jobsController.stream.map((list) => list.where((j) => j.employerId == employerId).toList());
-      } else {
-        yield localList;
-        yield* _jobsController.stream;
+        localList = localList.where((j) => j.employerId == employerId).toList();
       }
+      if (openOnly) {
+        localList = localList.where((j) => j.status.trim().toLowerCase() != 'closed').toList();
+      }
+      yield localList;
+      yield* _jobsController.stream.map((list) {
+        var filtered = list;
+        if (employerId != null && employerId.isNotEmpty) {
+          filtered = filtered.where((j) => j.employerId == employerId).toList();
+        }
+        if (openOnly) {
+          filtered = filtered.where((j) => j.status.trim().toLowerCase() != 'closed').toList();
+        }
+        return filtered;
+      });
     }
   }
 

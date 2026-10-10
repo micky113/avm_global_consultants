@@ -290,7 +290,7 @@ class _JobsPageState extends State<JobsPage> {
       _searchController.text = _locationQuery;
     }
 
-    _jobsStream = FirebaseService.instance.getJobsStream();
+    _jobsStream = FirebaseService.instance.getJobsStream(openOnly: true);
     _pageFocusNode = FocusNode();
 
     // Log analytics page view on enter
@@ -475,7 +475,9 @@ class _JobsPageState extends State<JobsPage> {
             return Center(child: Text('Error loading jobs: ${snapshot.error}'));
           }
 
-          final jobs = snapshot.data ?? [];
+          final jobs = (snapshot.data ?? [])
+              .where((j) => j.status.trim().toLowerCase() != 'closed')
+              .toList();
 
           // Initialize custom selection from query parameter if available
           if (!_hasInitializedSelection && jobs.isNotEmpty) {
